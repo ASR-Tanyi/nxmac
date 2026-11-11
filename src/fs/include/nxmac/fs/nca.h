@@ -93,8 +93,8 @@ public:
 
     const NcaHeader& header() const { return header_; }
     bool has_section(int index) const;
-    // OK when the content key was found; otherwise FailedPrecondition naming the key prod.keys lacks, or the missing
-    // ticket
+    // OK when the content key was found; otherwise FailedPrecondition, naming the key prod.keys lacks or the ticket
+    // that is missing
     const absl::Status& key_status() const { return key_status_; }
 
     // Section index decrypted, below its hash tree: what an update's patch is laid over.

@@ -26,8 +26,7 @@ ContentId Id(std::uint32_t seed) {
     return id;
 }
 
-// An application's NSP: a Program NCA under a title key (with its ticket), a Control NCA, and the Meta NCA that lists
-// them
+// An application's NSP: a Program NCA under a title key (with its ticket), a Control NCA, and the Meta NCA listing both
 Bytes BuildNsp(const KeySet& keys, bool common_ticket) {
     testing::NcaSpec program;
     program.program_id = kGame;

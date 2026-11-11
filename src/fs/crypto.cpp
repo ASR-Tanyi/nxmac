@@ -107,8 +107,7 @@ void AesCtrTransform(const Aes128Key& key, std::uint64_t counter_upper, std::uin
     internal::StoreBe64(counter + 8, offset / 16);
     std::size_t stream_offset = offset % 16;
     if (stream_offset != 0) {
-        // Start inside a block: its key stream, then the counter of the next block, as Mbed TLS keeps them between
-        // calls
+        // Starting inside a block: that block's key stream, and the next block's counter, as Mbed TLS keeps them
         Check(mbedtls_aes_crypt_ecb(ctx.get(), MBEDTLS_AES_ENCRYPT, counter, stream), "AES-CTR");
         for (int i = 15; i >= 0; --i) {
             if (++counter[i] != 0) break;

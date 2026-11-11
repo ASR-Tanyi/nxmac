@@ -138,6 +138,15 @@ absl::StatusOr<StoragePtr> OpenHierarchicalIntegrity(const StoragePtr& raw, std:
                                    level + 2 == layers ? "IVFC data" : absl::StrFormat("IVFC level %u", level));
         if (!checked.ok()) return checked.status();
         hashes = *std::move(checked);
+        // A hash level is read and checked once, here, and kept: without it every read of the data, however small,
+        // would check a block of each level above it again. The levels of a 16 GB RomFS take 32 MB. A level that fails
+        // its check stays as it was, so that the reads it fails name the files they are for.
+        constexpr std::uint64_t kMaxKept = 256 << 20;
+        if (level + 2 < layers && size <= kMaxKept) {
+            if (absl::StatusOr<std::vector<std::uint8_t>> level_bytes = ReadBytes(*hashes, 0, size); level_bytes.ok()) {
+                hashes = MakeMemoryStorage(*std::move(level_bytes));
+            }
+        }
     }
     return hashes;
 }

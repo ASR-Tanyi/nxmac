@@ -1,6 +1,5 @@
 // The cryptography of the Switch's content formats, on Mbed TLS: AES-128 in the ECB, XTS and CTR modes as NCAs use
-// them, and SHA-256 for their hash trees. Each call sets up its own cipher, so they are safe from several threads at
-// once.
+// them, and SHA-256 for their hash trees. Each call sets up its own cipher: they are safe from several threads at once.
 #pragma once
 
 #include <array>

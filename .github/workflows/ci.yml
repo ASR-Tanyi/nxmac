@@ -56,7 +56,7 @@ jobs:
       - name: Ninja and clang's sanitizer runtimes
         run: |
           sudo apt-get update -q
-          sudo apt-get install -y -q ninja-build libclang-rt-18-dev
+          sudo apt-get install -y -q ninja-build libclang-rt-18-dev zlib1g-dev
           cmake --version | head -1
       - name: Fewer random bits in mmap addresses (TSan)
         if: matrix.preset == 'tsan'

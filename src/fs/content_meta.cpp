@@ -11,8 +11,7 @@ namespace nxmac::fs {
 
 absl::StatusOr<ContentMeta> ParseContentMeta(std::span<const std::uint8_t> bytes) {
     using internal::LoadLe;
-    // Header: title ID, version, type, reserved, extended header size, content count, content meta count, attributes,
-    // ...
+    // Header: title ID, version, type, reserved, extended header size, content count, content meta count, and so on
     constexpr std::size_t kHeaderSize = 0x20;
     constexpr std::size_t kContentInfoSize =
         0x38;  // the content's SHA-256, then its ID, size (5 bytes), attributes, type

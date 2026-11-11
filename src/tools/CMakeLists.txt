@@ -7,4 +7,18 @@ function(nxmac_add_tool name)
   nxmac_target_defaults(${name})
 endfunction()
 
-# No tools yet: the host comes first.
+# nsp: the Switch packages of your games, read and checked (nxnative's nx_extract, rewritten): info, verify, extract,
+# dlc. Its commands are a library, so that the tests run them in-process (tests/tools/nsp_test.cpp).
+add_library(nxmac_nsp STATIC
+  nsp/commands.cpp
+  nsp/copy.cpp
+  nsp/extract.cpp
+  nsp/info.cpp
+  nsp/options.cpp
+  nsp/verify.cpp)
+target_include_directories(nxmac_nsp PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
+target_link_libraries(nxmac_nsp
+  PUBLIC nxmac::fs
+  PRIVATE absl::flat_hash_set absl::strings absl::str_format Threads::Threads)
+nxmac_target_defaults(nxmac_nsp)
+nxmac_add_tool(nsp SOURCES nsp/main.cpp LIBS nxmac_nsp)

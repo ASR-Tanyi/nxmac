@@ -24,8 +24,8 @@ public:
     };
 
     // The common tickets are added to a copy of keys; a personalized ticket is skipped (its NCAs report the missing
-    // title key). An NCA that does not open (a damaged header, a header_key of other consoles) fails Open, naming its
-    // file.
+    // title key). An NCA that does not open (a damaged header, another console family's header_key) fails Open, which
+    // names its file.
     static absl::StatusOr<Package> Open(const KeySet& keys, StoragePtr storage);
     static absl::StatusOr<Package> OpenFile(const KeySet& keys, const std::string& path);
 

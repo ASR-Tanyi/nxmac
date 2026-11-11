@@ -1,6 +1,11 @@
 # Third-party libraries, pinned to release archives (whose hashes do not change) and built in the tree with nxmac's compiler, standard and
 # sanitizers. Their headers are SYSTEM includes, so nxmac's warnings and clang-tidy do not report on them, and only what nxmac links is built.
 # -DFETCHCONTENT_TRY_FIND_PACKAGE_MODE=OPT_IN takes installed packages (Homebrew's abseil and googletest) instead, when found.
+
+# The system's own: threads, and zlib (the macOS SDK has it; zlib1g-dev on Debian and Ubuntu) for compressed NACP names
+find_package(Threads REQUIRED)
+find_package(ZLIB REQUIRED)
+
 set(FETCHCONTENT_TRY_FIND_PACKAGE_MODE NEVER CACHE STRING "NEVER: the pinned archives; OPT_IN: installed packages when found")
 include(FetchContent)
 

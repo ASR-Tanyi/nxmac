@@ -23,8 +23,8 @@ public:
     // Reads the entry tables; InvalidArgument when they are not a RomFS's or their links leave them.
     static absl::StatusOr<RomFs> Open(StoragePtr storage);
 
-    // Every directory and file but the root, depth first: each directory's files, then its subdirectories, in table
-    // order
+    // Every directory and file but the root, depth first: each directory's files, then its subdirectories (in the
+    // order of the tables)
     const std::vector<Entry>& entries() const { return entries_; }
     absl::StatusOr<StoragePtr> OpenFile(const Entry& file) const;
 
