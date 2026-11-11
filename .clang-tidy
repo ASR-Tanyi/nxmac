@@ -5,12 +5,14 @@ Checks:
   - bugprone-*
   - -bugprone-easily-swappable-parameters             # style: adjacent parameters of one type
   - -bugprone-narrowing-conversions                   # guest values are narrowed and widened between widths on purpose
+  - -bugprone-signed-bitwise                          # as nxnative's: shifts and masks of int constants (1 << 20, field masks) are deliberate
   - -bugprone-implicit-widening-of-multiplication-result
   - -bugprone-reserved-identifier                     # __-prefixed names of the guest ABI and the SDK
   - clang-analyzer-*
   - -clang-analyzer-optin.performance.Padding         # guest and SDK structures have the layout the game expects
   - -clang-analyzer-optin.osx.cocoa.localizability.*  # no user-facing strings to localize
   - abseil-*
+  - -abseil-unchecked-statusor-access                 # crashes clang-tidy 23.1.4 (its dataflow analysis, on `if (Status s = ...; !s.ok())`)
   - cppcoreguidelines-missing-std-forward
   - cppcoreguidelines-slicing
   - cppcoreguidelines-virtual-class-destructor

@@ -1,4 +1,4 @@
 # The tests take the project's checks, less the ones that misread GoogleTest's assertion macros.
 InheritParentConfig: true
 Checks:
-  - -abseil-unchecked-statusor-access   # crashes clang-tidy 23.1.4 in its dataflow analysis on GoogleTest 1.18's ASSERT_* bodies; and ASSERT_TRUE(s.ok()) is the tests' check
+  - -bugprone-unchecked-optional-access  # the tests dereference what they built, or what an ASSERT_* checked

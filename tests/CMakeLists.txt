@@ -14,3 +14,15 @@ endfunction()
 nxmac_add_test(core_test
   SOURCES core/title_id_test.cpp
   LIBS nxmac::core absl::strings)
+
+# nxmac::fs on formats the test builders make with made-up keys (no game data, no console keys)
+nxmac_add_test(fs_test
+  SOURCES fs/crypto_test.cpp fs/keys_test.cpp fs/nca_test.cpp fs/package_test.cpp fs/partition_fs_test.cpp
+          fs/patch_test.cpp fs/romfs_test.cpp fs/test_builders.cpp
+  LIBS nxmac::fs absl::strings absl::str_format)
+target_include_directories(fs_test PRIVATE "${PROJECT_SOURCE_DIR}/src/fs")   # the bucket trees' internals (patch_test)
+
+# nxmac::fs on a game of yours, opt-in (skipped unless NXMAC_TEST_KEYS and NXMAC_TEST_BASE are set: fs/real_game_test.cpp)
+nxmac_add_test(fs_real_test
+  SOURCES fs/real_game_test.cpp
+  LIBS nxmac::fs absl::strings absl::str_format)

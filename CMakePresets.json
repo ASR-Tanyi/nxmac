@@ -81,6 +81,14 @@
       ]
     },
     {
+      "name": "release",
+      "steps": [
+        { "type": "configure", "name": "release" },
+        { "type": "build", "name": "release" },
+        { "type": "test", "name": "release" }
+      ]
+    },
+    {
       "name": "asan",
       "steps": [
         { "type": "configure", "name": "asan" },

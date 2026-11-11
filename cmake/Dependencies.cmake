@@ -16,6 +16,23 @@ FetchContent_Declare(absl
   FIND_PACKAGE_ARGS CONFIG)
 FetchContent_MakeAvailable(absl)
 
+# Mbed TLS 3.6.7 (LTS): AES-XTS/CTR/ECB and SHA-256 for the Switch formats (nxmac::fs). Only its crypto library is built, with the extra config
+# cmake/mbedtls_user_config.h (SHA-256 on the ARMv8 instructions). Cache entries, not plain variables: its CMake (3.5 policies) would drop those.
+set(ENABLE_PROGRAMS OFF CACHE BOOL "Mbed TLS: build its programs")
+set(ENABLE_TESTING OFF CACHE BOOL "Mbed TLS: build its tests")
+set(MBEDTLS_FATAL_WARNINGS OFF CACHE BOOL "Mbed TLS: warnings as errors (off: other compilers and sanitizers warn)")
+set(GEN_FILES OFF CACHE BOOL "Mbed TLS: regenerate its generated sources (the release archive has them)")
+set(USE_STATIC_MBEDTLS_LIBRARY ON CACHE BOOL "Mbed TLS: static libraries")
+set(USE_SHARED_MBEDTLS_LIBRARY OFF CACHE BOOL "Mbed TLS: shared libraries")
+set(MBEDTLS_USER_CONFIG_FILE "${PROJECT_SOURCE_DIR}/cmake/mbedtls_user_config.h" CACHE FILEPATH "Mbed TLS: nxmac's additions to its config")
+FetchContent_Declare(mbedtls
+  URL https://github.com/Mbed-TLS/mbedtls/releases/download/mbedtls-3.6.7/mbedtls-3.6.7.tar.bz2
+  URL_HASH SHA256=a7e8bcbec0e6f761b4af24f25677626b35f762f68eef79c08677a363212d11f6
+  EXCLUDE_FROM_ALL
+  SYSTEM
+  FIND_PACKAGE_ARGS NAMES MbedTLS CONFIG)
+FetchContent_MakeAvailable(mbedtls)
+
 # GoogleTest 1.18.0, with GoogleMock
 if(NXMAC_BUILD_TESTS)
   set(INSTALL_GTEST OFF)
