@@ -55,4 +55,18 @@ src/tools/        native replacements for nxnative's Python tools: nxmac_add_too
 tests/            GoogleTest per module: nxmac_add_test(<name> SOURCES ... LIBS ...)
 ```
 
+## CI
+
+`.github/workflows/ci.yml` runs on pull requests and on pushes to `main`:
+
+| Job | Runner | What it checks |
+|---|---|---|
+| Linux debug, asan, tsan | `ubuntu-24.04`, clang 18 | core, tools and tests (the host and gfx are Mac-only) |
+| Mac debug, asan, tsan | `xcode-27` (Xcode 27.2, as nxnative) | everything, the host built for `GAME`; the tests, then an `nxhost` start |
+| clang-format and clang-tidy | `xcode-27`, LLVM 23.1.4 (nxnative's lint-c.yml pin) | `format-check`, then the `tidy` preset |
+
+The Mac jobs take the game's profile from nxnative at the commit `NXNATIVE_REF` names (a sparse checkout of `dm/games/<GAME>`), so nxnative's main moving does not change CI: raise it on purpose. `xcode-27` is GitHub's Xcode 27 preview image, which actionlint does not know yet (`.github/actionlint.yaml`). CI formats with clang-format 23.1.4: if Homebrew's llvm is another version and the two disagree, use CI's (`pipx install clang-format==23.1.4`, then `-DNXMAC_CLANG_FORMAT_EXE=$(which clang-format)`).
+
+## Adding code
+
 Where new code goes: anything without Apple APIs (formats, tables, the rewriter's logic) into `src/core`, with its tests in `tests/`; Metal and Objective-C++ into `src/gfx`; the host's own code into `src/host`. Every target calls `nxmac_target_defaults()` (`cmake/NxmacTargets.cmake`) for its warnings, ARC and clang-tidy. `src/core/title_id.*` is a first, small piece that proves the chain (Abseil, tests, sanitizers); it can stay or go.

@@ -15,9 +15,10 @@ absl::StatusOr<TitleId> TitleId::Parse(std::string_view text) {
     constexpr std::size_t kDigits = 16;
     if (text.size() == kDigits) {
         std::uint64_t value = 0;
-        const char* const end = text.data() + text.size();
-        const auto [ptr, ec] = std::from_chars(text.data(), end, value, 16);
-        if (ec == std::errc() && ptr == end) return TitleId(value);
+        const char* const first = text.data();
+        const char* const last = first + text.size();
+        const auto [ptr, ec] = std::from_chars(first, last, value, 16);
+        if (ec == std::errc() && ptr == last) return TitleId(value);
     }
     return absl::InvalidArgumentError(
         absl::StrCat("a title ID is 16 hex digits, not \"", absl::CHexEscape(text), "\""));
