@@ -1,0 +1,4 @@
+# Exceptions for ASan and UBSan, read at compile time (-fsanitize-ignorelist, cmake/Sanitizers.cmake). Each entry says why on the line above it;
+# a finding in nxmac's own code is fixed, not listed. Syntax: https://clang.llvm.org/docs/SanitizerSpecialCaseList.html, for example
+#   [address]
+#   fun:guest_*

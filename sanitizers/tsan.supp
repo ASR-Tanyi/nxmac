@@ -1,0 +1,3 @@
+# ThreadSanitizer suppressions, read at run time (TSAN_OPTIONS=suppressions=..., the tsan test preset). Each entry says why on the line above it;
+# a race in nxmac's own code is fixed, not listed. Syntax: https://github.com/google/sanitizers/wiki/ThreadSanitizerSuppressions, for example
+#   race:^UninstrumentedFrameworkFunction$

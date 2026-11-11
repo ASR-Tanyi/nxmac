@@ -1,0 +1,7 @@
+# nxmac's style: Google's, with nxnative's 4-space indent and a wider line.
+BasedOnStyle: Google
+IndentWidth: 4
+AccessModifierOffset: -4
+ColumnLimit: 120
+DerivePointerAlignment: false
+PointerAlignment: Left

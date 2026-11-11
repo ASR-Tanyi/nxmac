@@ -1,0 +1,25 @@
+# clang-tidy on nxmac's own code (the tidy preset, NXMAC_CLANG_TIDY). As nxnative's .clang-tidy: checks that find bugs, not style, plus the ones
+# a C++ rewrite gains (Abseil, moves and forwarding, overrides). A check left out says why on its line.
+Checks:
+  - -*
+  - bugprone-*
+  - -bugprone-easily-swappable-parameters             # style: adjacent parameters of one type
+  - -bugprone-narrowing-conversions                   # guest values are narrowed and widened between widths on purpose
+  - -bugprone-implicit-widening-of-multiplication-result
+  - -bugprone-reserved-identifier                     # __-prefixed names of the guest ABI and the SDK
+  - clang-analyzer-*
+  - -clang-analyzer-optin.performance.Padding         # guest and SDK structures have the layout the game expects
+  - -clang-analyzer-optin.osx.cocoa.localizability.*  # no user-facing strings to localize
+  - abseil-*
+  - cppcoreguidelines-missing-std-forward
+  - cppcoreguidelines-slicing
+  - cppcoreguidelines-virtual-class-destructor
+  - misc-misplaced-const
+  - misc-redundant-expression
+  - misc-unused-using-decls
+  - modernize-use-nullptr
+  - modernize-use-override
+  - performance-*
+  - -performance-enum-size                            # enums mirror guest ABI fields, whose widths are the guest's
+WarningsAsErrors: ''                                  # the tidy preset makes every finding an error (NXMAC_WARNINGS_AS_ERRORS)
+HeaderFilterRegex: '.*/(src|tests)/.*'
