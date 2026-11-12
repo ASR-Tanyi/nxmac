@@ -51,3 +51,16 @@ nxmac_add_test(nso_test
   SOURCES tools/nso_options_test.cpp tools/nso_test.cpp
   LIBS nxmac_nso)
 target_compile_definitions(nso_test PRIVATE "NXMAC_REWRITER_FIXTURES=\"${CMAKE_CURRENT_SOURCE_DIR}/rewriter/fixtures\"")
+
+# nxmac::shader held to nxnative's shader_split.py on the made-up games of shader/fixtures, and its internals
+nxmac_add_test(shader_test
+  SOURCES shader/golden_test.cpp shader/profiles_test.cpp shader/py_test.cpp
+  LIBS nxmac::shader nxmac::fs ZLIB::ZLIB absl::strings)
+target_include_directories(shader_test PRIVATE "${PROJECT_SOURCE_DIR}/src/shader")   # its internals (py.h, archive.h, nvn.h)
+target_compile_definitions(shader_test PRIVATE "NXMAC_SHADER_FIXTURES=\"${CMAKE_CURRENT_SOURCE_DIR}/shader/fixtures\"")
+
+# The shader command line, in-process
+nxmac_add_test(shader_tool_test
+  SOURCES tools/shader_options_test.cpp tools/shader_test.cpp
+  LIBS nxmac_shader_tool)
+target_compile_definitions(shader_tool_test PRIVATE "NXMAC_SHADER_FIXTURES=\"${CMAKE_CURRENT_SOURCE_DIR}/shader/fixtures\"")

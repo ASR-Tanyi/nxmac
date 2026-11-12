@@ -1,0 +1,12 @@
+// Generated from src/shader/profiles.tsv when nxmac is configured: do not edit.
+#include "builtin_profiles.h"
+
+namespace nxmac::shader::internal {
+
+std::string_view BuiltInProfilesText() {
+    static constexpr char kText[] =
+@NXMAC_PROFILES_LITERAL@;
+    return {kText, sizeof kText - 1};
+}
+
+}  // namespace nxmac::shader::internal

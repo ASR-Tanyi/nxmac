@@ -51,10 +51,12 @@ sanitizers/       ignorelist.txt (ASan/UBSan), tsan.supp (TSan)
 src/core/         nxmac::core: portable C++ the host and the tools share; no Apple APIs, builds and tests on any platform
 src/fs/           nxmac::fs: the Switch's content formats, read and hash-checked (what nx_extract did with LibHac); portable
 src/rewriter/     nxmac::rewriter: the NSO rewriter (nxnative's patch_nso.py), its patch tables (patches.tsv) and each game's stub code (games/); portable
+src/shader/       nxmac::shader: the shader split (nxnative's shader_split.py) and its profile table (profiles.tsv); portable
 src/gfx/          nxmac::gfx: NVN / Vulkan / GL on Metal; Objective-C++ (.mm) inside, plain C++ headers outside
 src/host/         nxhost (nxnative's dmhost): loader, SVC gate (.S), services; built for NXMAC_GAME
-src/tools/        native replacements for nxnative's tools: nxmac_add_tool(<name> SOURCES ...); nsp/ and nso/
-tools/            scripts: export_patches.py (nxnative's patch tables -> src/rewriter/patches.tsv)
+src/tools/        native replacements for nxnative's tools: nxmac_add_tool(<name> SOURCES ...); nsp/, nso/ and shader/
+tools/            scripts: export_patches.py (nxnative's patch tables -> src/rewriter/patches.tsv), export_shader_profiles.py
+                  (the profiles' shader values -> src/shader/profiles.tsv)
 tests/            GoogleTest per module: nxmac_add_test(<name> SOURCES ... LIBS ...)
 ```
 
@@ -124,6 +126,47 @@ Capstone 5.0.9 decodes for it, the version nxnative pins: the rules read Capston
 
 **Tests.** `rewriter_test` holds the rewriter to nxnative's: `tests/rewriter/fixtures` has small modules laid out as an NSO is (hand-written assembly for each kind of site, GoogleTest compiled for aarch64 with x18 in use, a registered build and an "update" of it, a stand-in for BotW 1.9.0's main that holds only the instruction words its patches assert), and `expected.tsv` has the SHA-256 of every file `patch_nso.py` writes for them. `fixtures/src/make_fixtures.sh` makes both again (it needs nxnative, its pinned Python packages and a clang with the aarch64 target).
 
+## shader
+
+`build/<preset>/bin/shader` splits out every NVN shader of a game, from its RomFS and its main, into the package and tables nxnative's shader build (`dmsh_build.py`) and host read: nxnative's `dm/gfx/tools/shader_split.py`, rewritten, with a command line of its own (`shader help` for everything). Its output is meant to be the same, byte for byte, as `shader_split.py`'s. After `nsp extract` (above), for BotW (1.9.0's merged RomFS, as nxnative's profile has it):
+
+```sh
+shader=build/release/bin/shader
+w=../nsp/01007EF00011E000-work
+$shader split -g 01007EF00011E000 -o $w/shader --main $w/extract/ExeFS/main $w/extract/RomFS.img
+```
+
+`$w/shader` gets `pkg/` (one `<stage>_<group>.bin` per stage and source group, a record per shader key) and the tables `shader_map.tsv`, `shader_facts.tsv`, `shader_pairs.tsv` and `pso_pairs.tsv`. The RomFS is an image or a folder; several versions are given each with its own `--main`, base game first (their union, as `shader_split.py`'s comma-separated lists), and `--dlc` adds an add-on content RomFS. Files are scanned on as many threads as the Mac has CPUs (`-j`). What it prints is `shader_split.py`'s: `progress: <done>/<total>`, a `[RED]` line for each file it leaves out (one that does not read, or one in another engine's format, below), and the summary line. A stop (a key whose bytes differ between two files, an archive it would take apart whole, below) has exit code 1 and writes nothing. `-g` is nxnative's `DM_GAME`.
+
+To check it against nxnative's `shader_split.py` on the same files (a venv with nxnative's `.github/requirements/tools.txt`), and against the tables in nxnative's profile, whose data rows the NSP script requires the split to give again:
+
+```sh
+DM_GAME=01007EF00011E000 ../venv/bin/python3 ../nxnative/dm/gfx/tools/shader_split.py $w/extract/RomFS.img $w/extract/ExeFS/main \
+    $w/shader_py/pkg $w/shader_py/shader_map.tsv $w/shader_py/shader_facts.tsv $w/shader_py/shader_pairs.tsv $w/shader_py/pso_pairs.tsv
+diff -r $w/shader_py $w/shader && echo same
+for t in shader_map shader_facts shader_pairs pso_pairs; do
+    diff <(grep -v '^#' ../nxnative/dm/games/01007EF00011E000/$t.tsv) <(grep -v '^#' $w/shader/$t.tsv) > /dev/null && echo "same rows: $t"
+done
+# then the Mac's shader libraries from the package, as nxnative's docs/development.md builds them:
+DM_GAME=01007EF00011E000 ../venv/bin/python3 ../nxnative/dm/gfx/tools/dmsh_build.py $w/shader/pkg <shader cache folder>
+```
+
+## nxmac::shader
+
+The library shader is built on (`src/shader`), a port of `shader_split.py` that keeps its order of work and its names: `scan.cpp` is its `scan_file` and `scan_blob`, `readers.cpp` its readers, `split.cpp` its `main`. Every file of the RomFS goes through the same dispatch, so that what is ported reads every file as `shader_split.py` does:
+
+- the forms Breath of the Wild's files take: Yaz0, SARC (archives in archives, under the same budgets), BNSH files and the BNSH in effects, layouts and main, agl's BAHS packs and their program variations (`pso_pairs.tsv`);
+- the other forms its generic scan takes in any file: gzip, Gust's zlib chunks, GLSLC compiler outputs, MSHD, NDSR and NDVE packs, sead's primitive drawer, NVN2 (Switch 2) control sections with task and mesh shaders, PlatinumGames' shader objects and DAT archives, Needle, Sumo, Star Fox's shader binaries, MonoGame effects in uncompressed XNB files, Phyre and RAGE's effects; and in main, YEBIS's zlib stream, control sections loose in the code and GLSLC outputs captured beside the RomFS;
+- the keys (the profile's `shader_key_skip`), the pairs of variations and single-stage programs (the pixel input cover), the facts of compute shaders with the profile's hand-written ones, and the four tables and the package as `shader_split.py` writes them.
+
+The RomFS is read through `nxmac::fs` (a DMROMFS1 image, or a folder) and main through `nxmac::rewriter`'s module loader. The checks of damaged data are `shader_split.py`'s: an offset or a length outside the bytes, read as Python's `struct` and slices read it, ends a file's scan with the same `[RED]` line and leaves that file out.
+
+**Profile table.** `shader_split.py` takes `shader_groups`, `shader_note`, `shader_key_skip` and `modules` from the game's profile, and merges its `shader_facts_manual.tsv` over the facts it generates. `tools/export_shader_profiles.py` writes them for every nxnative profile to `src/shader/profiles.tsv`, which is compiled into the library; run it again when a profile's shader values change, then build (`shader -p <file>` takes another table, `shader profile <id>` shows what it holds).
+
+**Not ported yet.** The readers of other engines' files: Unity (`unityfs.py`), Unreal (`uepak.py`, the shader code archives and Unreal Engine 3's caches), zstd files and HAL's size-prefixed frames (with Tears of the Kingdom's dictionaries), compressed XNB files, KTGL's archives and shader packages, RE Engine, MT Framework, Bezel Engine, Game Freak's GFPAK and Trinity packs, Retro Studios, Snowdrop, Criterion's Bundle 2, Heaps, Monolith, Next Level Games, Double Eleven, CRI's CPK, Camelot, PlatinumGames' PKZ, FromSoftware's dvdbnd, phx, RAGE's RPF6, Frostbite, zip archives, and the NROs a boot captures (`DM_NRO_DIR`). A file in one of these forms is left out with a `[RED]` line that says its reader is not ported (it counts among the files that could not be read); an archive `shader_split.py` takes apart as a whole before the scan (a zip, a CPK, an Unreal pak, a LINKDATA archive, Super Smash Bros. Ultimate's data.arc, ...) stops the split, and so do Tears of the Kingdom's zstd dictionaries and decoded Unreal shader code archives beside the RomFS.
+
+**Tests.** `shader_test` holds the split to nxnative's: `tests/shader/fixtures/cases` has made-up games (no game data), one per form above, a DMROMFS1 image, several versions with DLC, damaged files and other engines' files, and `expected.tsv` and `lines.tsv` have the SHA-256 of every file `shader_split.py` writes for them and what it prints. `fixtures/src/make_fixtures.sh` makes them again (it needs nxnative and Python 3.12).
+
 ## nxmac::fs
 
 The library nsp is built on (`src/fs`): `prod.keys` and tickets, NSP / PFS0 and HFS0, NCA2 and NCA3 (AES-XTS headers, key areas and title keys, AES-CTR sections), their hash trees (HierarchicalSha256 and IVFC: every block read is checked), update patches (BKTR: the indirect and AesCtrEx tables, laid over the base game's section), RomFS and nxnative's DMROMFS1 image of it, content metas and control data (NACP, with the compressed names of newer SDKs). Key values never appear in a message. Not read yet: sparse and compressed sections, XCI, NSZ, key derivation from master keys (`prod.keys` from Lockpick_RCM has the derived keys).
@@ -145,7 +188,7 @@ build/release/bin/fs_real_test
 
 | Job | Runner | What it checks |
 |---|---|---|
-| Linux debug, asan, tsan | `ubuntu-24.04`, clang 18 | core, fs, the rewriter, tools and tests (the host and gfx are Mac-only) |
+| Linux debug, asan, tsan | `ubuntu-24.04`, clang 18 | core, fs, the rewriter, the shader split, tools and tests (the host and gfx are Mac-only) |
 | Mac debug, asan, tsan | `xcode-27` (Xcode 27.2, as nxnative) | everything, the host built for `GAME`; the tests, then an `nxhost` start |
 | clang-format and clang-tidy | `xcode-27`, LLVM 23.1.4 (nxnative's lint-c.yml pin) | `format-check`, then the `tidy` preset |
 
@@ -153,4 +196,4 @@ The Mac jobs take the game's profile from nxnative at the commit `NXNATIVE_REF` 
 
 ## Adding code
 
-Where new code goes: the Switch's content formats into `src/fs`, the rewriter's rules into `src/rewriter` and a build's stub code into `src/rewriter/games/<title ID>.cpp`, the commands of a tool into `src/tools/<tool>/` (a library, so that its tests run it in-process, and a `main.cpp`); anything else without Apple APIs into `src/core`, with its tests in `tests/`; Metal and Objective-C++ into `src/gfx`; the host's own code into `src/host`. Every target calls `nxmac_target_defaults()` (`cmake/NxmacTargets.cmake`) for its warnings, ARC and clang-tidy. `src/core/title_id.*` is a first, small piece that proves the chain (Abseil, tests, sanitizers); it can stay or go.
+Where new code goes: the Switch's content formats into `src/fs`, the rewriter's rules into `src/rewriter` and a build's stub code into `src/rewriter/games/<title ID>.cpp`, the shader split's readers into `src/shader/readers.cpp` (and their dispatch into `scan.cpp`), the commands of a tool into `src/tools/<tool>/` (a library, so that its tests run it in-process, and a `main.cpp`); anything else without Apple APIs into `src/core`, with its tests in `tests/`; Metal and Objective-C++ into `src/gfx`; the host's own code into `src/host`. Every target calls `nxmac_target_defaults()` (`cmake/NxmacTargets.cmake`) for its warnings, ARC and clang-tidy. `src/core/title_id.*` is a first, small piece that proves the chain (Abseil, tests, sanitizers); it can stay or go.

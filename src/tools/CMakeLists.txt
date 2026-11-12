@@ -34,3 +34,15 @@ target_link_libraries(nxmac_nso
   PRIVATE absl::strings absl::str_format Threads::Threads)
 nxmac_target_defaults(nxmac_nso)
 nxmac_add_tool(nso SOURCES nso/main.cpp LIBS nxmac_nso)
+
+# shader: a game's NVN shaders, split out for nxnative's shader build (nxnative's shader_split.py, rewritten): split,
+# profile. Its commands are a library, so that the tests run them in-process (tests/tools/shader_test.cpp).
+add_library(nxmac_shader_tool STATIC
+  shader/commands.cpp
+  shader/options.cpp)
+target_include_directories(nxmac_shader_tool PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
+target_link_libraries(nxmac_shader_tool
+  PUBLIC nxmac::shader
+  PRIVATE absl::strings Threads::Threads)
+nxmac_target_defaults(nxmac_shader_tool)
+nxmac_add_tool(shader SOURCES shader/main.cpp LIBS nxmac_shader_tool)

@@ -1,0 +1,27 @@
+# The lines shader_split.py prints for each case, in its order (one file at a time), its progress left out: case, line.
+# Written by src/make_fixtures.sh from nxnative's shader_split.py (f20f650781d3a50710645d2bc4d54e675eba5576): do not edit.
+botw	shaders: 73 (compute 4, geometry 2, pixel 34, vertex 33); sources shader 17, effect 16, gsys 16, main 14, layout 6, terrain 4; compute shader answers 6 rows; variation pairs 28
+botw_image	shaders: 71 (compute 4, geometry 2, pixel 33, vertex 32); sources shader 17, gsys 16, main 14, effect 14, layout 6, terrain 4; compute shader answers 6 rows; variation pairs 27
+capture	single-stage programs: 1 vertex shaders are paired with a cover of 2 pixel shader(s) (12ce55a33501bc2a b0631c27b64b48a9)
+capture	shaders: 4 (pixel 2, vertex 2); sources other 4; compute shader answers 2 rows; variation pairs 3
+damaged	[RED] /Effect/bad.sesetlist BNSH @0x0 variation 4 program: 0x8 bytes at 0x100e0c0a00000888 lie outside the 0x3420 bytes there are (its shaders are left out)
+damaged	[RED] Effect/conflict.sesetlist: key 55a57c8f55dd7969 is the same but the control section or code area differs (/Effect/conflict.sesetlist#BNSH@0x0#var1) (its shaders are left out)
+damaged	[RED] /Effect/mismatch.sesetlist BNSH @0x0 variation 0 vs: control +0x704 does not match the code area length (its shaders are left out)
+damaged	[RED] /Pack/bad.pack: SARC member 1 at 0x1980..0x7fffffff of the data lies outside its 0x1a80 bytes (its shaders are left out)
+damaged	[RED] /Shader/cut.sbfsha: the Yaz0 stream ends at 0x13b with 0xb0d of its 0x1bc0 bytes decoded (its shaders are left out)
+damaged	[RED] 5 file(s) could not be read, their shaders are left out (first: /Effect/bad.sesetlist BNSH @0x0 variation 4 program: 0x8 bytes at 0x100e0c0a00000888 lie outside the 0x3420 bytes there are)
+damaged	shaders: 8 (pixel 4, vertex 4); sources shader 4, main 2, other 2; compute shader answers 2 rows; variation pairs 4
+formats	[RED] main control section @0x5d00: no code area: no data record points at one, and the code builds the address of none right after or right before it; left out
+formats	single-stage programs: 6 vertex shaders are paired with a cover of 1 pixel shader(s) (734718a35deda03c)
+formats	shaders: 40 (compute 3, mesh 1, pixel 19, vertex 17); sources other 29, main 7, shader 4; compute shader answers 5 rows; variation pairs 18
+glsl	shaders: 2 (pixel 1, vertex 1); sources other 2; compute shader answers 2 rows; variation pairs 1
+keyskip	shaders: 3 (pixel 1, vertex 2); sources other 3; compute shader answers 0 rows; variation pairs 2
+single	single-stage programs: 2 vertex shaders are paired with a cover of 3 pixel shader(s) (122c9392f6c6d050 8f06d1e80924dc8c d275db1e31ac7ad1)
+single	shaders: 8 (pixel 5, vertex 3); sources main 6, other 2; compute shader answers 2 rows; variation pairs 7
+unported	[RED] /Data/data.unity3d: a Unity asset, but main has no Unity common string table (its shaders are left out)
+unported	[RED] Shader/b.zs: FileNotFoundError: [Errno 2] No such file or directory: 'zstd' (its shaders are left out)
+unported	[RED] 2 file(s) could not be read, their shaders are left out (first: /Data/data.unity3d: a Unity asset, but main has no Unity common string table)
+unported	shaders: 2 (pixel 1, vertex 1); sources shader 2; compute shader answers 2 rows; variation pairs 1
+unported_zip	[RED] /game.zip: the zip cannot be read (File is not a zip file); scanned as one file
+unported_zip	shaders: 2 (pixel 1, vertex 1); sources shader 2; compute shader answers 2 rows; variation pairs 1
+versions	shaders: 22 (pixel 11, vertex 11); sources shader 14, main 4, effect 4; compute shader answers 2 rows; variation pairs 11

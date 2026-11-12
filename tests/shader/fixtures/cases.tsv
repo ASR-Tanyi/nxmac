@@ -1,0 +1,15 @@
+# The golden cases of tests/shader/golden_test.cpp: case, profile, versions (RomFS|main;...), DLC (;-separated, - for none), then ok, own-lines
+# (nxmac prints its own red lines: another engine's files) or stop (nxmac stops where shader_split.py goes on), and the text the stop holds.
+# Written by src/make_fixtures.sh from nxnative's shader_split.py (f20f650781d3a50710645d2bc4d54e675eba5576): do not edit.
+botw	01007EF00011E000	rom|main	-	ok	-
+botw_image	01007EF00011E000	RomFS.img|main	-	ok	-
+capture	01007EF00011E000	rom|main	-	ok	-
+conflict	01007EF00011E000	rom|main	-	stop	key 0295ace0ca0faba6 is the same but the control section or code area differs (/b.bin#BNSH@0x0#var0 / /a.bin#BNSH@0x0#var0)
+damaged	01007EF00011E000	rom|main	-	ok	-
+formats	01007EF00011E000	rom|main	-	ok	-
+glsl	01007EF00011E000	rom|ExeFS/main	-	ok	-
+keyskip	0100ACD0163D0000	rom|main	-	ok	-
+single	01007EF00011E000	rom|main	-	ok	-
+unported	01007EF00011E000	rom|main	-	own-lines	-
+unported_zip	01007EF00011E000	rom|main	-	stop	a zip archive: its reader is not ported to nxmac yet
+versions	01007EF00011E000	v0/RomFS|v0/ExeFS/main;v327680/RomFS/|v327680/ExeFS/main	dlc/0100/RomFS;dlc2/	ok	-

@@ -1,3 +1,6 @@
 # The rewriter test fixtures are modules, not text: no line-ending conversion, no text diffs
 tests/rewriter/fixtures/*.nso binary
 tests/rewriter/fixtures/*.nro binary
+# The shader split's test fixtures are made-up game files (src/make_fixtures.sh writes them), its tables text
+tests/shader/fixtures/cases/** binary
+tests/shader/fixtures/cases/**/case.json text eol=lf
