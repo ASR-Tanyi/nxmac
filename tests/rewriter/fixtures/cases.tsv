@@ -1,0 +1,18 @@
+# The golden cases of tests/rewriter/golden_test.cpp: case, fixture file, module name, game (- for none), then "ok" or the
+# text the failure must hold. Every case uses the tables of patches_fixture.tsv. src/make_fixtures.sh runs nxnative's
+# patch_nso.py on each and writes the hashes of its files to expected.tsv.
+sys	sys.nso	sdk	-	ok
+excl	excl.nso	sdk	-	ok
+jump	jump.nso	sdk	-	ok
+spin	spin.nso	sdk	-	ok
+region	region.nso	sdk	-	ok
+data	data.nso	subsdk0	-	ok
+far	far.nso	main	-	ok
+nro	nro.nro	nro0	-	ok
+code	g.nso	sdk	-	ok
+registered	g.nso	main	0100000000009000	ok
+matched	g2.nso	main	0100000000009000	ok
+unmatched	g2.nso	main	-	ok
+other_game	g2.nso	main	01007EF00011E000	ok
+frame_step	botw_sites.nso	main	01007EF00011E000	ok
+fail	fail.nso	sdk	-	ldr x18

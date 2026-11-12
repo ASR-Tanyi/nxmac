@@ -1,0 +1,3 @@
+# The rewriter test fixtures are modules, not text: no line-ending conversion, no text diffs
+tests/rewriter/fixtures/*.nso binary
+tests/rewriter/fixtures/*.nro binary

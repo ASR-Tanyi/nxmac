@@ -38,6 +38,24 @@ FetchContent_Declare(mbedtls
   FIND_PACKAGE_ARGS NAMES MbedTLS CONFIG)
 FetchContent_MakeAvailable(mbedtls)
 
+# Capstone 5.0.9, AArch64 only: the disassembler nxnative's rewriter reads code with (capstone==5.0.9 in its .github/requirements). The rewriter's
+# rules read its instruction text and register lists, so nxmac::rewriter takes the same version and no installed package stands in for it: another
+# version may print or list an instruction differently, and the rewrite would differ. Pinned by the commit of its 5.0.9 tag (Capstone publishes no
+# release archive of its own), fetched alone. On macOS its CMake builds both architectures unless told not to; nxmac is arm64 only.
+set(CAPSTONE_ARCHITECTURE_DEFAULT OFF CACHE BOOL "Capstone: build every architecture")
+set(CAPSTONE_ARM64_SUPPORT ON CACHE BOOL "Capstone: AArch64")
+set(CAPSTONE_BUILD_MACOS_THIN ON CACHE BOOL "Capstone: no universal build on macOS")
+set(CAPSTONE_BUILD_TESTS OFF CACHE BOOL "Capstone: build its tests")
+set(CAPSTONE_BUILD_CSTOOL OFF CACHE BOOL "Capstone: build cstool")
+set(CAPSTONE_INSTALL OFF CACHE BOOL "Capstone: install target")
+FetchContent_Declare(capstone
+  GIT_REPOSITORY https://github.com/capstone-engine/capstone.git
+  GIT_TAG 022575848782a4801fd150fdbc927effcbca0864   # 5.0.9
+  GIT_SHALLOW ON
+  EXCLUDE_FROM_ALL
+  SYSTEM)
+FetchContent_MakeAvailable(capstone)
+
 # GoogleTest 1.18.0, with GoogleMock
 if(NXMAC_BUILD_TESTS)
   set(INSTALL_GTEST OFF)

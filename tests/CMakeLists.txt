@@ -37,3 +37,17 @@ nxmac_add_test(fs_real_test
 nxmac_add_test(nsp_test
   SOURCES tools/nsp_options_test.cpp tools/nsp_test.cpp
   LIBS nxmac_nsp nxmac_test_builders)
+
+# nxmac::rewriter: its readers and text matching, and the rewriter itself held to nxnative's on the fixtures of
+# rewriter/fixtures (golden_test.cpp)
+nxmac_add_test(rewriter_test
+  SOURCES rewriter/golden_test.cpp rewriter/module_test.cpp rewriter/patches_test.cpp rewriter/text_test.cpp
+  LIBS nxmac::rewriter nxmac::fs absl::strings)
+target_include_directories(rewriter_test PRIVATE "${PROJECT_SOURCE_DIR}/src/rewriter")   # its internals (text.h, lz4.h)
+target_compile_definitions(rewriter_test PRIVATE "NXMAC_REWRITER_FIXTURES=\"${CMAKE_CURRENT_SOURCE_DIR}/rewriter/fixtures\"")
+
+# The nso tool, its commands run in-process on the same fixtures
+nxmac_add_test(nso_test
+  SOURCES tools/nso_options_test.cpp tools/nso_test.cpp
+  LIBS nxmac_nso)
+target_compile_definitions(nso_test PRIVATE "NXMAC_REWRITER_FIXTURES=\"${CMAKE_CURRENT_SOURCE_DIR}/rewriter/fixtures\"")

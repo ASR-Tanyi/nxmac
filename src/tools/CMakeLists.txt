@@ -22,3 +22,15 @@ target_link_libraries(nxmac_nsp
   PRIVATE absl::flat_hash_set absl::strings absl::str_format Threads::Threads)
 nxmac_target_defaults(nxmac_nsp)
 nxmac_add_tool(nsp SOURCES nsp/main.cpp LIBS nxmac_nsp)
+
+# nso: Switch code modules rewritten for nxnative's host (nxnative's patch_nso.py, rewritten): rewrite, info. Its
+# commands are a library, so that the tests run them in-process (tests/tools/nso_test.cpp).
+add_library(nxmac_nso STATIC
+  nso/commands.cpp
+  nso/options.cpp)
+target_include_directories(nxmac_nso PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
+target_link_libraries(nxmac_nso
+  PUBLIC nxmac::rewriter
+  PRIVATE absl::strings absl::str_format Threads::Threads)
+nxmac_target_defaults(nxmac_nso)
+nxmac_add_tool(nso SOURCES nso/main.cpp LIBS nxmac_nso)

@@ -64,6 +64,7 @@ include(GameProfile)
 # ---- the tree ----
 add_subdirectory(src/core)
 add_subdirectory(src/fs)
+add_subdirectory(src/rewriter)
 if(APPLE)
   add_subdirectory(src/gfx)
 endif()
