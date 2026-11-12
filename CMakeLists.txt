@@ -6,9 +6,10 @@
 # The portable parts (core, tools, tests) build on any platform, so they can be tested off the Mac; gfx and the host are Apple-only.
 cmake_minimum_required(VERSION 3.28...4.2)
 
-# Read when the toolchain is set up, so they come before project(). The minimum macOS is nxnative's (dm/mac/min_os.mk); arm64 only, because the
-# guest's own arm64 code runs natively. An explicit SDK keeps -isysroot on every compile line (CMake 4 leaves it out), which clang-tidy needs.
-set(CMAKE_OSX_DEPLOYMENT_TARGET "26.6" CACHE STRING "Minimum macOS version of everything nxmac builds")
+# Read when the toolchain is set up, so they come before project(). The minimum macOS is 15 (nxnative's own is 26.6, dm/mac/min_os.mk), built with
+# Xcode 26 or later; arm64 only, because the guest's own arm64 code runs natively. An explicit SDK keeps -isysroot on every compile line (CMake 4
+# leaves it out), which clang-tidy needs.
+set(CMAKE_OSX_DEPLOYMENT_TARGET "15.0" CACHE STRING "Minimum macOS version of everything nxmac builds")
 set(CMAKE_OSX_ARCHITECTURES "arm64" CACHE STRING "Architectures nxmac builds for (the host runs arm64 guest code natively)")
 if(CMAKE_HOST_APPLE)
   set(CMAKE_OSX_SYSROOT "macosx" CACHE STRING "SDK nxmac builds against")
@@ -66,6 +67,7 @@ add_subdirectory(src/core)
 add_subdirectory(src/fs)
 add_subdirectory(src/rewriter)
 add_subdirectory(src/shader)
+add_subdirectory(src/dmsh)
 if(APPLE)
   add_subdirectory(src/gfx)
 endif()

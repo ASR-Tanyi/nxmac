@@ -56,6 +56,46 @@ FetchContent_Declare(capstone
   SYSTEM)
 FetchContent_MakeAvailable(capstone)
 
+# PCRE2 10.47 (8-bit, with its JIT): the regular expressions of the shader build (nxmac::dmsh). nxnative's dmsh_build.py rewrites Metal source with
+# Python's re; PCRE2 matches as it does (Perl's rules: leftmost, alternatives in order, backtracking), which std::regex and RE2 do not. Pinned by the
+# commit of its release tag (its JIT, sljit, is a submodule that comes with it).
+set(PCRE2_BUILD_PCRE2_8 ON CACHE BOOL "PCRE2: the 8-bit library")
+set(PCRE2_BUILD_PCRE2_16 OFF CACHE BOOL "PCRE2: the 16-bit library")
+set(PCRE2_BUILD_PCRE2_32 OFF CACHE BOOL "PCRE2: the 32-bit library")
+set(PCRE2_BUILD_PCRE2GREP OFF CACHE BOOL "PCRE2: build pcre2grep")
+set(PCRE2_BUILD_TESTS OFF CACHE BOOL "PCRE2: build its tests")
+set(PCRE2_SUPPORT_JIT ON CACHE BOOL "PCRE2: just-in-time compiling")
+set(PCRE2_SUPPORT_LIBBZ2 OFF CACHE BOOL "PCRE2: bzip2 in pcre2grep")
+set(PCRE2_SUPPORT_LIBZ OFF CACHE BOOL "PCRE2: zlib in pcre2grep")
+set(PCRE2_SUPPORT_LIBEDIT OFF CACHE BOOL "PCRE2: libedit in pcre2test")
+set(PCRE2_SUPPORT_LIBREADLINE OFF CACHE BOOL "PCRE2: readline in pcre2test")
+set(PCRE2_STATIC_PIC OFF CACHE BOOL "PCRE2: position-independent static library")
+set(BUILD_STATIC_LIBS ON CACHE BOOL "PCRE2: static libraries")
+FetchContent_Declare(pcre2
+  GIT_REPOSITORY https://github.com/PCRE2Project/pcre2.git
+  GIT_TAG f454e231fe5006dd7ff8f4693fd2b8eb94333429   # pcre2-10.47
+  GIT_SHALLOW ON
+  EXCLUDE_FROM_ALL
+  SYSTEM)
+FetchContent_MakeAvailable(pcre2)
+
+# SPIRV-Cross at the commit nxnative's shader chain pins (dm/gfx/tools/spirv_cross_bin/build.sh: vulkan-sdk-1.4.363.0), linked into nxmac::dmsh, which
+# runs its command line's own code in-process (src/dmsh/cross.cpp), so the Metal source is what nxnative's spirv-cross binary writes. No installed
+# package stands in for it: another version writes other source.
+set(SPIRV_CROSS_CLI OFF CACHE BOOL "SPIRV-Cross: build its command-line program")
+set(SPIRV_CROSS_ENABLE_TESTS OFF CACHE BOOL "SPIRV-Cross: build its tests")
+set(SPIRV_CROSS_ENABLE_C_API OFF CACHE BOOL "SPIRV-Cross: the C API")
+set(SPIRV_CROSS_SKIP_INSTALL ON CACHE BOOL "SPIRV-Cross: no install targets")
+set(SPIRV_CROSS_SHARED OFF CACHE BOOL "SPIRV-Cross: shared library")
+set(SPIRV_CROSS_STATIC ON CACHE BOOL "SPIRV-Cross: static libraries")
+FetchContent_Declare(spirv_cross
+  GIT_REPOSITORY https://github.com/KhronosGroup/SPIRV-Cross.git
+  GIT_TAG f11ba9f0b21ba8fc15153d50a2a1ae31ab1cf8f7   # vulkan-sdk-1.4.363.0
+  GIT_SHALLOW ON
+  EXCLUDE_FROM_ALL
+  SYSTEM)
+FetchContent_MakeAvailable(spirv_cross)
+
 # GoogleTest 1.18.0, with GoogleMock
 if(NXMAC_BUILD_TESTS)
   set(INSTALL_GTEST OFF)
