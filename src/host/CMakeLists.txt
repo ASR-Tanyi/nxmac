@@ -3,7 +3,10 @@
 # (nxnative dm/host/entry.S) come over as .S sources; ASM is enabled for them.
 add_subdirectory(third_party)   # libvpx and dav1d, from nxnative's copies (third-party code it vendors)
 
+# The takeover files (hle_*.cpp) are listed here: each one's entries reach the tables by being linked into nxhost
 add_executable(nxhost
+  hle_nvdrv.cpp
+  hle_tables.cpp
   log.cpp
   main.cpp)
 target_link_libraries(nxhost PRIVATE nxmac::core nxmac::gfx nxmac::loader nxmac::game_profile absl::str_format absl::strings)

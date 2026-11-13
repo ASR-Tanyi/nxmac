@@ -18,6 +18,7 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_split.h"
 #include "game_profile.h"
+#include "hle.h"
 #include "log.h"
 #include "nxmac/core/version.h"
 #include "nxmac/gfx/metal_device.h"
@@ -186,8 +187,9 @@ int Main(int argc, char** argv) {
         Log("%s: %u symbols (%u hash slots), DT_INIT %#x, init_array %u entries", m.name, m.symbols.nsym(),
             m.symbols.hash_slots(), m.symbols.init(), m.symbols.init_arraysz() / 8);
     }
-    // Relocation, once every module is mapped: a symbol can bind to any of them. The takeover tables are empty so far,
-    // and the named stubs (entry.S's table) are not there yet: an import nothing defines would stay 0.
+    // Relocation, once every module is mapped: a symbol can bind to any of them, or to nxhost's takeovers (the
+    // hle_*.cpp files). The named stubs' code (entry.S's table) is not there yet: an import nothing defines or
+    // implements would stay 0.
     loader::HleOptions options;
     options.log_imports = std::getenv("DM_IMPORTS") != nullptr;
     options.log = [](std::string_view line) { Log("%s", line); };
@@ -195,7 +197,7 @@ int Main(int argc, char** argv) {
         Dl_info info{};
         return dladdr(fn, &info) != 0 && info.dli_sname != nullptr ? std::string(info.dli_sname) : std::string("?");
     };
-    absl::StatusOr<loader::HleResolver> hle = loader::HleResolver::Create({}, {}, std::move(options));
+    absl::StatusOr<loader::HleResolver> hle = loader::HleResolver::Create(HleTable(), ForceTable(), std::move(options));
     if (!hle.ok()) Die("%s", hle.status().message());
     std::vector<loader::LoadedModule> loaded;
     loaded.reserve(g_modules.size());
@@ -218,7 +220,7 @@ int Main(int argc, char** argv) {
         absl::StrAppend(&boot, boot.empty() ? "" : ", ", name, " ", Where(p));
     }
     Log("boot symbols: %s", boot);
-    Log("[RED] nxhost stops here: the gate's dispatch, the takeovers and the named stubs' code are not ported yet (%d "
+    Log("[RED] nxhost stops here: the gate's dispatch, most takeovers and the named stubs' code are not ported yet (%d "
         "gates, %u stubs)",
         g_gates->count(), hle->stubs());
     return 1;
