@@ -59,5 +59,5 @@ Sizes are of nxnative's source.
 | # | State |
 |---|---|
 | 1 | done: libvpx as `nxmac::vpx`, dav1d as `nxmac::dav1d` (`src/host/third_party`); the rest comes with items 9–13 |
-| 2 | in progress. Done: 2a, the layout tables (`<module>.fixups.tsv`) read by `nxmac::loader` (`src/loader`, portable, `loader_test`); 2b, `nxhost <dir> [mod...] [-- game arguments...]` picks the profile's modules (main.c `profile_modules`), reads their tables and stops there, logging `[dm]` lines as nxnative's host. Next: 2c, mapping the images (`<module>.patched.bin`) |
+| 2 | in progress. Done: 2a, the layout tables (`<module>.fixups.tsv`) read by `nxmac::loader` (`src/loader`, portable, `loader_test`); 2b, `nxhost <dir> [mod...] [-- game arguments...]` picks the profile's modules (main.c `profile_modules`) and reads their tables, logging `[dm]` lines as nxnative's host; 2c, the images mapped (`loader::MapModule`: loader.c `map_image`'s Mac path, `install_key_page`, `install_fps_state`'s check) with nxhost's four thread keys and the TSD check, then a stop before relocation. Not ported: the served JIT image's layout (`DM_JIT_SERVE`). Next: 2d, the modules' dynamic sections and symbols (`parse_dynamic`, the symbol hash) |
 | 3–13 | not started: nxhost is still the stub `src/host/main.cpp`, `src/gfx` has only `metal_device.mm` |

@@ -1,6 +1,8 @@
 # nxmac::loader: nxhost's module loader, in the role of Horizon's rtld as nxnative's dm/host/loader.c plays it. So far: the rewritten modules'
-# layout tables (<module>.fixups.tsv, which nso writes) and which modules a profile loads. Portable C++: it builds and is tested on any platform.
+# layout tables (<module>.fixups.tsv, which nso writes), which modules a profile loads, and their images mapped (<module>.patched.bin). Portable C++
+# (POSIX mmap / mprotect): it builds and is tested on any platform.
 add_library(nxmac_loader STATIC
+  image.cpp
   layout.cpp
   modules.cpp)
 add_library(nxmac::loader ALIAS nxmac_loader)
