@@ -46,6 +46,7 @@ Each preset builds in `build/<preset>/`, with the executables in `build/<preset>
 
 ```
 CMakeLists.txt, CMakePresets.json
+docs/             dmhost-plan.md: the plan for nxhost, the dmhost rewrite (items, order, status)
 cmake/            Sanitizers, Dependencies (Abseil, Mbed TLS, Capstone, GoogleTest), Tooling (clang-tidy, clang-format), NxmacTargets, GameProfile
 sanitizers/       ignorelist.txt (ASan/UBSan), tsan.supp (TSan)
 src/core/         nxmac::core: portable C++ the host and the tools share; no Apple APIs, builds and tests on any platform
