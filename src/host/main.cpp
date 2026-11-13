@@ -1,12 +1,13 @@
 // nxhost's entry point, as nxnative's dm/host/main.c: nxhost <module dir> [module...] [-- game arguments...]. So far it
-// reads the modules' layout tables, maps their images, reads their symbols, relocates them and finds the boot's
-// symbols, then stops there: the named stubs and the host's implementations come next.
+// reads the modules' layout tables, maps their images, reads their symbols, registers their host gates, relocates
+// them and finds the boot's symbols, then stops there: the gate's dispatch and the host's implementations come next.
 #include <pthread.h>
 
 #include <array>
 #include <cstdint>
 #include <cstdlib>
 #include <filesystem>
+#include <memory>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -20,6 +21,7 @@
 #include "log.h"
 #include "nxmac/core/version.h"
 #include "nxmac/gfx/metal_device.h"
+#include "nxmac/loader/gates.h"
 #include "nxmac/loader/image.h"
 #include "nxmac/loader/layout.h"
 #include "nxmac/loader/modules.h"
@@ -44,7 +46,8 @@ struct Module {
     loader::ModuleImage image;
     loader::ModuleSymbols symbols;
 };
-std::vector<Module> g_modules;  // in load order; filled once, before any guest code runs
+std::vector<Module> g_modules;               // in load order; filled once, before any guest code runs
+std::unique_ptr<loader::GateTable> g_gates;  // every module's host gates, by return point (hle.c g_gate)
 
 // The first module, in load order, that defines `name` (loader.c guest_sym / loaded_sym); null when none does
 std::uint8_t* GuestSym(std::string_view name) {
@@ -178,6 +181,7 @@ int Main(int argc, char** argv) {
         g_modules.push_back({name, *std::move(m), {}, {}});
     }
     const loader::HostKeys keys = CreateKeys();
+    g_gates = std::make_unique<loader::GateTable>();
     for (std::size_t k = 0; k < g_modules.size(); ++k) {
         Module& m = g_modules[k];
         absl::StatusOr<loader::ModuleImage> image = loader::MapModule(dir, m.name, m.layout, keys);
@@ -188,6 +192,12 @@ int Main(int argc, char** argv) {
             loader::ModuleSymbols::Parse(m.image.base(), m.image.size(), m.name);
         if (!symbols.ok()) Die("%s", symbols.status().message());
         m.symbols = *std::move(symbols);
+        const absl::StatusOr<int> gates =
+            loader::RegisterGates(*g_gates, dir, m.name, reinterpret_cast<std::uint64_t>(m.image.base()));
+        if (!gates.ok()) Die("%s", gates.status().message());
+        Log("%s: gates %d patch_off %#x keys %d/%d/%d/%d", m.name, *gates,
+            static_cast<std::uint64_t>(m.layout.patch_off), keys[loader::kKeyK18], keys[loader::kKeyTls],
+            keys[loader::kKeyTlr], keys[loader::kKeyGate]);
         Log("%s: base %p size %#x", m.name, static_cast<const void*>(m.image.base()), m.image.size());
         Log("%s: %u symbols (%u hash slots), DT_INIT %#x, init_array %u entries", m.name, m.symbols.nsym(),
             m.symbols.hash_slots(), m.symbols.init(), m.symbols.init_arraysz() / 8);
@@ -214,9 +224,10 @@ int Main(int argc, char** argv) {
         absl::StrAppend(&boot, boot.empty() ? "" : ", ", name, " ", Where(p));
     }
     Log("boot symbols: %s", boot);
-    Log("[RED] nxhost stops here: the named stubs and the host's implementations are not ported yet (%u imports left "
-        "at 0)",
-        hle.stubs());
+    Log("[RED] nxhost stops here: the gate's dispatch, the named stubs and the host's implementations are not ported "
+        "yet "
+        "(%d gates, %u imports left at 0)",
+        g_gates->count(), hle.stubs());
     return 1;
 }
 
