@@ -79,3 +79,11 @@ nxmac_add_test(loader_test
           loader/symbols_test.cpp
   LIBS nxmac::loader nxmac::rewriter absl::strings)
 target_compile_definitions(loader_test PRIVATE "NXMAC_REWRITER_FIXTURES=\"${CMAKE_CURRENT_SOURCE_DIR}/rewriter/fixtures\"")
+
+# The host gate end to end (gate.S), which runs rewritten code natively: Apple's arm64 alone, where the host is built
+if(TARGET nxmac_host_runtime)
+  nxmac_add_test(gate_test
+    SOURCES host/gate_test.cpp
+    LIBS nxmac::host_runtime nxmac::loader nxmac::rewriter)
+  target_compile_definitions(gate_test PRIVATE "NXMAC_REWRITER_FIXTURES=\"${CMAKE_CURRENT_SOURCE_DIR}/rewriter/fixtures\"")
+endif()

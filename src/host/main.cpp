@@ -18,7 +18,9 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_split.h"
 #include "game_profile.h"
+#include "gate.h"
 #include "hle.h"
+#include "keys.h"
 #include "log.h"
 #include "nxmac/core/version.h"
 #include "nxmac/gfx/metal_device.h"
@@ -91,35 +93,18 @@ constexpr std::string_view kBootSymbols[] = {"_init_libc0",
                                              "_init_libc2",
                                              "nnMain"};
 
-// The four thread slots (dm.h), in key_idx's order: K18 = the Switch's x18, KTLS = tpidr_el0, KTLR = tpidrro_el0 (the
-// ThreadLocalRegion), KGATE = the host gate's entry. Every module's key page holds their slot offsets.
-std::array<pthread_key_t, loader::kKeyCount> g_keys{};
-
-// loader.c create_keys
-loader::HostKeys CreateKeys() {
-    for (pthread_key_t& k : g_keys) {
-        if (pthread_key_create(&k, nullptr) != 0) Die("cannot create the host key");
-    }
-    Log("key numbers K18=%lu KTLS=%lu KTLR=%lu KGATE=%lu", static_cast<unsigned long>(g_keys[loader::kKeyK18]),
-        static_cast<unsigned long>(g_keys[loader::kKeyTls]), static_cast<unsigned long>(g_keys[loader::kKeyTlr]),
-        static_cast<unsigned long>(g_keys[loader::kKeyGate]));
-    loader::HostKeys keys{};
-    for (int k = 0; k < loader::kKeyCount; ++k) keys[k] = static_cast<std::uint64_t>(g_keys[k]);
-    return keys;
-}
-
 // The K slots' check on the first module (loader.c tsd_check): pthread's TSD layout is fixed, a key's slot at
 // tpidrro_el0
 // + 8 * key, where the rewritten code reads it through the key page
 void TsdCheck(const loader::ModuleImage& m, const loader::ModuleLayout& l) {
 #if defined(__APPLE__) && defined(__aarch64__)
-    pthread_setspecific(g_keys[loader::kKeyK18], reinterpret_cast<void*>(0x1234));
+    pthread_setspecific(Keys()[loader::kKeyK18], reinterpret_cast<void*>(0x1234));
     std::uint64_t base = 0;
     __asm__ volatile("mrs %0, tpidrro_el0" : "=r"(base));
     const std::uint64_t off =
         *reinterpret_cast<const std::uint64_t*>(m.base() + l.key_page_off + l.key_idx[loader::kKeyK18] * 8);
     if (reinterpret_cast<const std::uint64_t*>(base & ~std::uint64_t{7})[off / 8] != 0x1234) Die("TSD layout mismatch");
-    pthread_setspecific(g_keys[loader::kKeyK18], nullptr);
+    pthread_setspecific(Keys()[loader::kKeyK18], nullptr);
 #else
     (void)m;  // nxhost runs on Apple's arm64 alone
     (void)l;
@@ -211,6 +196,8 @@ int Main(int argc, char** argv) {
     }
     if (absl::Status s = hle->CheckForced(std::getenv("DM_FORCE_STRICT") != nullptr); !s.ok()) Die("%s", s.message());
     Log("stubs=%u", hle->stubs());  // stubs_report
+    // The gates, with nothing behind them yet: a gate the guest reaches stops with a [RED] line for its kind
+    SetGates(g_gates.get(), {});
 
     // main.c req: what the boot calls must be there
     std::string boot;
@@ -220,8 +207,9 @@ int Main(int argc, char** argv) {
         absl::StrAppend(&boot, boot.empty() ? "" : ", ", name, " ", Where(p));
     }
     Log("boot symbols: %s", boot);
-    Log("[RED] nxhost stops here: the gate's dispatch, most takeovers and the named stubs' code are not ported yet (%d "
-        "gates, %u stubs)",
+    Log("[RED] nxhost stops here: the SVCs, the guest clock, most takeovers and the named stubs' code are not ported "
+        "yet "
+        "(%d gates, %u stubs)",
         g_gates->count(), hle->stubs());
     return 1;
 }

@@ -59,7 +59,8 @@ src/loader/       nxmac::loader: nxhost's module loader (nxnative's dm/host/load
                   which modules a profile loads, their images mapped, their symbols, their relocation
                   and their host gates; portable (POSIX)
 src/gfx/          nxmac::gfx: NVN / Vulkan / GL on Metal; Objective-C++ (.mm) inside, plain C++ headers outside
-src/host/         nxhost (nxnative's dmhost): loader, SVC gate (.S), services; built for NXMAC_GAME
+src/host/         nxhost (nxnative's dmhost): its runtime (nxmac::host_runtime: log, thread keys, the SVC gate, gate.S), its
+                  takeovers (hle_*.cpp) and main; built for NXMAC_GAME
 src/tools/        native replacements for nxnative's tools: nxmac_add_tool(<name> SOURCES ...); nsp/, nso/ and shader/
 tools/            scripts: export_patches.py (nxnative's patch tables -> src/rewriter/patches.tsv), export_shader_profiles.py
                   (the profiles' shader values -> src/shader/profiles.tsv), export_dmsh_abi.py (nxnative's shader library
