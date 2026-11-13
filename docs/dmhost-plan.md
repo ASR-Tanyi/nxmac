@@ -56,4 +56,5 @@ Sizes are of nxnative's source.
 
 | # | State |
 |---|---|
-| 1–13 | not started: nxhost is still the stub `src/host/main.cpp`, `src/gfx` has only `metal_device.mm` |
+| 1 | in progress. Done: libvpx as `nxmac::vpx` (`src/host/third_party`, from nxnative's copy). Next: dav1d, the host MSL header, nxnative's sources into nxhost |
+| 2–13 | not started: nxhost is still the stub `src/host/main.cpp`, `src/gfx` has only `metal_device.mm` |
