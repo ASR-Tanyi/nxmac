@@ -41,8 +41,8 @@ public:
     // A forced takeover's address (HLE_FORCE, force_lookup): it overrides every definition; 0 when there is none
     virtual std::uint64_t Forced(std::string_view name) = 0;
     // `name` for `module`, which no loaded module defines: the host's implementation, else a named stub
-    // (resolve_import)
-    virtual std::uint64_t Import(std::string_view module, std::string_view name) = 0;
+    // (resolve_import). An error (no stub left) stops the relocation.
+    virtual absl::StatusOr<std::uint64_t> Import(std::string_view module, std::string_view name) = 0;
     // Whether the host implements `name`, without making a stub for it (hle_implements)
     virtual bool Implements(std::string_view name) = 0;
 };
@@ -69,7 +69,7 @@ struct RelocationReport {
 
 // Relocates modules[index] against `modules` (every loaded module, in load order: its own definitions are looked up
 // there too). InvalidArgument when a relocation table, a relocation's place or its symbol is not inside the image, or a
-// RELR bitmap comes before any start (where nxnative's host stops).
+// RELR bitmap comes before any start (where nxnative's host stops); the resolver's error when it has one.
 absl::StatusOr<RelocationReport> Relocate(std::span<const LoadedModule> modules, std::size_t index,
                                           ImportResolver& resolver);
 

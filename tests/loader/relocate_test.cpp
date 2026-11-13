@@ -34,7 +34,7 @@ using testing::kWeakFunc;
 class FakeResolver : public ImportResolver {
 public:
     std::uint64_t Forced(std::string_view name) override { return name == "forced" ? 0xf0f0 : 0; }
-    std::uint64_t Import(std::string_view module, std::string_view name) override {
+    absl::StatusOr<std::uint64_t> Import(std::string_view module, std::string_view name) override {
         imports.push_back(absl::StrCat(module, ":", name));
         return name == "weak_impl" ? 0x1111 : 0x2222;
     }

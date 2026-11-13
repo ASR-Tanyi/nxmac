@@ -140,9 +140,10 @@ absl::StatusOr<RelocationReport> Relocate(std::span<const LoadedModule> modules,
         report.relr = *n;
     }
     // resolve_sym: a loaded module's definition, else the host's
-    const auto resolve_sym = [&](std::string_view name) {
+    const auto resolve_sym = [&](std::string_view name) -> absl::StatusOr<std::uint64_t> {
         const std::uint64_t p = LoadedSym(modules, name);
-        return p != 0 ? p : resolver.Import(m.name, name);
+        if (p != 0) return p;
+        return resolver.Import(m.name, name);
     };
     for (int t = 0; t < 2; ++t) {
         if (!Inside(m, rl.tab[t], rl.n[t] * sizeof(Elf64Rela))) {
@@ -178,13 +179,23 @@ absl::StatusOr<RelocationReport> Relocate(std::span<const LoadedModule> modules,
             bool other = false;
             if (v == 0 && s.st_shndx != 0) {
                 const std::uint64_t self = reinterpret_cast<std::uint64_t>(m.base) + s.st_value;
-                v = Bind(s) == kStbLocal || Visibility(s) != kStvDefault ? self : resolve_sym(nm);
+                if (Bind(s) == kStbLocal || Visibility(s) != kStvDefault) {
+                    v = self;
+                } else {
+                    const absl::StatusOr<std::uint64_t> p = resolve_sym(nm);
+                    if (!p.ok()) return p.status();
+                    v = *p;
+                }
                 if (v == 0) v = self;
                 other = v != self;
             }
             const bool weak0 = v == 0 && s.st_shndx == 0 && Bind(s) == kStbWeak && LoadedSym(modules, nm) == 0 &&
                                !resolver.Implements(nm);
-            if (v == 0 && !weak0) v = resolve_sym(nm);
+            if (v == 0 && !weak0) {
+                const absl::StatusOr<std::uint64_t> p = resolve_sym(nm);
+                if (!p.ok()) return p.status();
+                v = *p;
+            }
 
             if (other && report.other++ < 8) {
                 const LoadedModule* const owner = ModuleOf(modules, v);
