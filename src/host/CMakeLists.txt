@@ -4,6 +4,7 @@
 add_subdirectory(third_party)   # libvpx and dav1d, from nxnative's copies (third-party code it vendors)
 
 add_executable(nxhost
+  log.cpp
   main.cpp)
-target_link_libraries(nxhost PRIVATE nxmac::core nxmac::gfx nxmac::game_profile absl::str_format)
+target_link_libraries(nxhost PRIVATE nxmac::core nxmac::gfx nxmac::loader nxmac::game_profile absl::str_format absl::strings)
 nxmac_target_defaults(nxhost)

@@ -59,5 +59,5 @@ Sizes are of nxnative's source.
 | # | State |
 |---|---|
 | 1 | done: libvpx as `nxmac::vpx`, dav1d as `nxmac::dav1d` (`src/host/third_party`); the rest comes with items 9–13 |
-| 2 | in progress. Done: 2a, the layout tables (`<module>.fixups.tsv`) read by `nxmac::loader` (`src/loader`, portable, `loader_test`). Next: nxhost reads BotW's tables from nso's output |
+| 2 | in progress. Done: 2a, the layout tables (`<module>.fixups.tsv`) read by `nxmac::loader` (`src/loader`, portable, `loader_test`); 2b, `nxhost <dir> [mod...] [-- game arguments...]` picks the profile's modules (main.c `profile_modules`), reads their tables and stops there, logging `[dm]` lines as nxnative's host. Next: 2c, mapping the images (`<module>.patched.bin`) |
 | 3–13 | not started: nxhost is still the stub `src/host/main.cpp`, `src/gfx` has only `metal_device.mm` |
