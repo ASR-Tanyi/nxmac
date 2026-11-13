@@ -9,6 +9,7 @@
 #include <cstdlib>
 #include <filesystem>
 #include <memory>
+#include <span>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -30,6 +31,7 @@
 #include "nxmac/loader/layout.h"
 #include "nxmac/loader/modules.h"
 #include "nxmac/loader/relocate.h"
+#include "nxmac/loader/sdk.h"
 #include "nxmac/loader/symbols.h"
 
 namespace nxmac::host {
@@ -196,6 +198,24 @@ int Main(int argc, char** argv) {
     }
     if (absl::Status s = hle->CheckForced(std::getenv("DM_FORCE_STRICT") != nullptr); !s.ok()) Die("%s", s.message());
     Log("stubs=%u", hle->stubs());  // stubs_report
+    // The SDK the game was built with (loader.c dm_sdk_major, dm_sdk_ounce): the sdk module's read-only data, data and
+    // bss
+    loader::SdkVersion sdk;
+    bool ounce = false;
+    for (const Module& m : g_modules) {
+        if (m.name != "sdk") continue;
+        const std::span<const std::uint8_t> data(m.image.base() + m.layout.ro_off,
+                                                 m.layout.key_page_off - m.layout.ro_off);
+        sdk = loader::FindSdkVersion(data);
+        ounce = loader::IsOunce(data);
+    }
+    if (sdk.major != 0) {
+        Log("sdk: NintendoSDK nnSdk-%s (major %d)", sdk.text, sdk.major);
+    } else {
+        Log("[RED] sdk: no SDK version string in the sdk module; SDK-dependent behaviour takes the newer SDKs' side");
+    }
+    if (ounce) Log("sdk: built for the Switch 2 (spec: Ounce)");
+
     // The gates, with nothing behind them yet: a gate the guest reaches stops with a [RED] line for its kind
     SetGates(g_gates.get(), {});
 
