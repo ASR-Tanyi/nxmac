@@ -1,6 +1,6 @@
 // nxhost's entry point, as nxnative's dm/host/main.c: nxhost <module dir> [module...] [-- game arguments...]. So far it
-// reads the modules' layout tables, maps their images, reads their symbols and finds the boot's symbols, then stops
-// there: relocating the modules is the loader's next piece.
+// reads the modules' layout tables, maps their images, reads their symbols, relocates them and finds the boot's
+// symbols, then stops there: the named stubs and the host's implementations come next.
 #include <pthread.h>
 
 #include <array>
@@ -12,6 +12,7 @@
 #include <utility>
 #include <vector>
 
+#include "absl/container/flat_hash_set.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_split.h"
@@ -22,6 +23,7 @@
 #include "nxmac/loader/image.h"
 #include "nxmac/loader/layout.h"
 #include "nxmac/loader/modules.h"
+#include "nxmac/loader/relocate.h"
 #include "nxmac/loader/symbols.h"
 
 namespace nxmac::host {
@@ -72,6 +74,23 @@ std::string Where(const void* p) {
     const std::int64_t off = static_cast<const std::uint8_t*>(p) - m->image.base();
     return absl::StrCat(m->name, off < 0 ? "-" : "+", SignedHex(off < 0 ? -off : off));
 }
+
+// What nxnative's hle.c answers, before nxhost has any of it: no forced takeovers and no implementations. An import no
+// module defines is counted once by name, as a named stub would be (resolve_import), and stays 0 until the stubs
+// (entry.S's table) come.
+class NoHleYet final : public loader::ImportResolver {
+public:
+    std::uint64_t Forced(std::string_view /*name*/) override { return 0; }
+    std::uint64_t Import(std::string_view /*module*/, std::string_view name) override {
+        stubs_.emplace(name);
+        return 0;
+    }
+    bool Implements(std::string_view /*name*/) override { return false; }
+    std::size_t stubs() const { return stubs_.size(); }
+
+private:
+    absl::flat_hash_set<std::string> stubs_;
+};
 
 // What the boot calls by name, in its order (main.c guest_main: the steps of nn::init::Start, then nnMain)
 constexpr std::string_view kBootSymbols[] = {"_init_libc0",
@@ -173,6 +192,20 @@ int Main(int argc, char** argv) {
         Log("%s: %u symbols (%u hash slots), DT_INIT %#x, init_array %u entries", m.name, m.symbols.nsym(),
             m.symbols.hash_slots(), m.symbols.init(), m.symbols.init_arraysz() / 8);
     }
+    // Relocation, once every module is mapped: a symbol can bind to any of them
+    NoHleYet hle;
+    std::vector<loader::LoadedModule> loaded;
+    loaded.reserve(g_modules.size());
+    for (const Module& m : g_modules) {
+        loaded.push_back({m.name, m.image.base(), m.image.size(), m.layout.patch_off, m.image.patch_len(), &m.symbols});
+    }
+    for (std::size_t k = 0; k < loaded.size(); ++k) {
+        const absl::StatusOr<loader::RelocationReport> r = loader::Relocate(loaded, k, hle);
+        if (!r.ok()) Die("%s", r.status().message());
+        for (const std::string& line : r->lines) Log("%s", line);
+    }
+    Log("stubs=%u", hle.stubs());  // stubs_report: every import no module defines, while the host implements none
+
     // main.c req: what the boot calls must be there
     std::string boot;
     for (const std::string_view name : kBootSymbols) {
@@ -181,7 +214,9 @@ int Main(int argc, char** argv) {
         absl::StrAppend(&boot, boot.empty() ? "" : ", ", name, " ", Where(p));
     }
     Log("boot symbols: %s", boot);
-    Log("[RED] nxhost stops here: relocating the modules is not ported yet");
+    Log("[RED] nxhost stops here: the named stubs and the host's implementations are not ported yet (%u imports left "
+        "at 0)",
+        hle.stubs());
     return 1;
 }
 
