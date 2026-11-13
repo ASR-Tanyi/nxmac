@@ -1,0 +1,17 @@
+#!/usr/bin/env python3
+# A stand-in for nxnative's translator (dmsh_xlate) in nxmac's tests: each job's outputs as the real translator wrote them for the same job (the same
+# fields and code), recorded beside this file in xlate/<job digest>/ (out.spv, out.res.json, and its [RED] lines). A job it has no record of fails as the
+# translator's [RED] line does. dmsh_xlate --source-sha is answered as nxnative's translator answers it.
+import hashlib, json, os, shutil, sys
+HERE = os.path.dirname(os.path.abspath(__file__))
+if sys.argv[1:] == ['--source-sha']: print('657232fd201f16a1'); sys.exit(0)
+def digest(job):
+    j = dict(job); code = open(j.pop('code'), 'rb').read()
+    return hashlib.sha256(json.dumps(j, sort_keys=True).encode() + b'\0' + code).hexdigest()[:24]
+jobs_path, outdir = sys.argv[1:3]
+for job in json.load(open(jobs_path)):
+    d = os.path.join(HERE, '..', 'xlate', digest(job))
+    if not os.path.isdir(d): sys.stderr.write(f'[RED] {job["key"]}: replay_xlate.py has no recorded translation of this job\n'); continue
+    for ext in ('.spv', '.res.json'):
+        if os.path.exists(os.path.join(d, 'out' + ext)): shutil.copyfile(os.path.join(d, 'out' + ext), os.path.join(outdir, job['key'] + ext))
+    sys.stderr.write(open(os.path.join(d, 'stderr')).read())

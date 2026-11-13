@@ -1,0 +1,33 @@
+{
+  "key": "822d44cf9246982d",
+  "stage": "ps",
+  "notes": [],
+  "cbufs": [],
+  "sbufs": [],
+  "textures": [
+    {
+      "binding": 1,
+      "type": 3,
+      "format": "Unknown",
+      "cbuf_slot": -1,
+      "handle": 8,
+      "array": 1,
+      "separate": false,
+      "flags": 0
+    },
+    {
+      "binding": 2,
+      "type": 3,
+      "format": "Unknown",
+      "cbuf_slot": -1,
+      "handle": 10,
+      "array": 1,
+      "separate": false,
+      "flags": 0
+    }
+  ],
+  "images": [],
+  "geometry_stride": 0,
+  "uses_frag_coord": false,
+  "frag_out_map": 15
+}

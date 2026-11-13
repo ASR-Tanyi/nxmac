@@ -42,7 +42,7 @@ add_library(nxmac_shader_tool STATIC
   shader/options.cpp)
 target_include_directories(nxmac_shader_tool PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(nxmac_shader_tool
-  PUBLIC nxmac::shader
+  PUBLIC nxmac::shader nxmac::dmsh
   PRIVATE absl::strings Threads::Threads)
 nxmac_target_defaults(nxmac_shader_tool)
 nxmac_add_tool(shader SOURCES shader/main.cpp LIBS nxmac_shader_tool)

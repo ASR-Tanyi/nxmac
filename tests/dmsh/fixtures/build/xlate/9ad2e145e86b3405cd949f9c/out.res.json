@@ -1,0 +1,12 @@
+{
+  "key": "2971af7ec9134346",
+  "stage": "ps",
+  "notes": [],
+  "cbufs": [],
+  "sbufs": [],
+  "textures": [],
+  "images": [],
+  "geometry_stride": 0,
+  "uses_frag_coord": false,
+  "frag_out_map": 15
+}

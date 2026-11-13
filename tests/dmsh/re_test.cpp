@@ -1,12 +1,13 @@
 // The regular expression layer of the shader build (src/dmsh/re.h) against what Python's re gives for the same calls
 // (the expected values are Python 3.13's).
+#include "re.h"
+
 #include <string>
 #include <utility>
 #include <vector>
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "re.h"
 
 namespace nxmac::dmsh::re {
 namespace {
@@ -14,10 +15,13 @@ namespace {
 using ::testing::ElementsAre;
 
 TEST(ReTest, SubStepsAsPythonDoes) {
-    EXPECT_EQ(sub("x*", "-", "abxd"), "-a-b--d-");  // an empty match beside one that was not
+    EXPECT_EQ(sub("x*", "-", "abxd"), "-a-b--d-");                          // an empty match beside one that was not
     EXPECT_EQ(sub(R"((a)|(b))", R"([\1|\2|\g<1>])", "ab"), "[a||a][|b|]");  // a group that took no part gives nothing
     EXPECT_EQ(sub(R"((?P<n>\d+))", R"(<\g<n>>)", "a12b3"), "a<12>b<3>");
-    EXPECT_EQ(sub(R"(\d)", [](const Match& m) { return std::to_string(std::stoi(std::string(m.group())) * 2); }, "a12", 1), "a22");
+    EXPECT_EQ(
+        sub(
+            R"(\d)", [](const Match& m) { return std::to_string(std::stoi(std::string(m.group())) * 2); }, "a12", 1),
+        "a22");
     std::size_t n = 0;
     EXPECT_EQ(Pattern("a").sub("b", "aXa", 0, &n), "bXb");
     EXPECT_EQ(n, 2u);
@@ -43,7 +47,7 @@ TEST(ReTest, FinditerAndFindall) {
 TEST(ReTest, PositionsSeeTheWholeText) {
     const Pattern b("b");
     EXPECT_EQ(b.search("abcb", 2)->start(), 3u);
-    EXPECT_FALSE(Pattern("^b").search("ab", 1));            // ^ is the text's start, not the position
+    EXPECT_FALSE(Pattern("^b").search("ab", 1));                 // ^ is the text's start, not the position
     EXPECT_EQ(Pattern("(?<=a)b").search("ab", 1)->start(), 1u);  // a lookbehind sees what comes before it
     EXPECT_FALSE(match("b", "ab"));
     EXPECT_EQ(b.match("ab", 1)->start(), 1u);
@@ -54,7 +58,7 @@ TEST(ReTest, PositionsSeeTheWholeText) {
 TEST(ReTest, ClassesAsPythonReadsThem) {
     EXPECT_EQ(search(R"([[\]x]+)", "a[x]]b")->group(), "[x]]");  // a [ in a class is itself
     EXPECT_EQ(search("[^[]+", "ab[c")->group(), "ab");
-    EXPECT_EQ(search("[]a]+", "x]a]")->group(), "]a]");  // a ] that comes first is a member
+    EXPECT_EQ(search("[]a]+", "x]a]")->group(), "]a]");   // a ] that comes first is a member
     EXPECT_EQ(search("[[:x]+", "a:[x")->group(), ":[x");  // no POSIX classes in Python
 }
 

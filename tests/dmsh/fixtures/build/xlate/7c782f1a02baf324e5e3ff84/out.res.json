@@ -1,0 +1,22 @@
+{
+  "key": "b262604f7619d820",
+  "stage": "cs",
+  "notes": [
+    "translator: Invalid barrier mode: Scan."
+  ],
+  "cbufs": [],
+  "sbufs": [
+    {
+      "binding": 2,
+      "slot": 0,
+      "cb_slot": 0,
+      "cb_offset": 196,
+      "flags": 1
+    }
+  ],
+  "textures": [],
+  "images": [],
+  "geometry_stride": 0,
+  "uses_frag_coord": false,
+  "frag_out_map": 0
+}

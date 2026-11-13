@@ -3,7 +3,8 @@
 // whose rules are Perl's, as Python's are (the leftmost match, alternatives in order, greedy and lazy quantifiers by
 // backtracking). What differs between the two is handled here:
 //   - \Z in a pattern is Python's end of the text (PCRE2's \z);
-//   - search / match / fullmatch at a position see the whole text (^ and lookbehind as in Python's pattern.search(s, pos));
+//   - search / match / fullmatch at a position see the whole text (^ and lookbehind as in Python's pattern.search(s,
+//   pos));
 //   - finditer and sub step as Python 3.7+ does: an empty match is taken beside a match that was not empty, and never
 //     twice at one place;
 //   - a replacement template is Python's: \1, \g<1>, \g<name>, \\, \n; a group that took no part gives nothing.

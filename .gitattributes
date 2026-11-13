@@ -4,3 +4,12 @@ tests/rewriter/fixtures/*.nro binary
 # The shader split's test fixtures are made-up game files (src/make_fixtures.sh writes them), its tables text
 tests/shader/fixtures/cases/** binary
 tests/shader/fixtures/cases/**/case.json text eol=lf
+# The shader build's test fixtures: recorded calls (gzip), a made-up game's packages, the translator's recorded SPIR-V and
+# the expected library are bytes; the stand-in tools and tables are text
+tests/dmsh/fixtures/*.gz binary
+tests/dmsh/fixtures/build/pkg/** binary
+tests/dmsh/fixtures/build/xlate/** binary
+tests/dmsh/fixtures/build/expected/*.img binary
+tests/dmsh/fixtures/build/xlate/**/out.res.json text eol=lf
+tests/dmsh/fixtures/build/xlate/**/stderr text eol=lf
+tests/dmsh/fixtures/build/bin/* text eol=lf

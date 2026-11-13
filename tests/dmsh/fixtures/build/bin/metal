@@ -1,0 +1,22 @@
+#!/usr/bin/env python3
+# A stand-in for Apple's Metal compiler: the "AIR" it writes is the source it was given, behind a marker and its flags; nothing is compiled.
+# A source that holds FAKE_METAL_ERROR (or matches the regular expression in the environment variable FAKE_METAL_FAIL) fails as a compile error does.
+import os, re, sys
+a = sys.argv[1:]
+if a == ['--version']:
+    print('Apple metal version 32023.922 (metalfe-32023.922.4)\nTarget: air64-apple-darwin25.6.0\nThread model: posix\nInstalledDir: /fake/Xcode.app/usr/bin'); sys.exit(0)
+out, src, flags, header, i = None, None, [], False, 0
+while i < len(a):
+    x = a[i]
+    if x == '-o': out = a[i + 1]; i += 2; continue
+    if x in ('-isysroot', '-include-pch'): i += 2; continue   # where the SDK is and a precompiled header change no output
+    if x == '-x': header = a[i + 1] == 'metal-header'; i += 2; continue
+    if x == '-' or not x.startswith('-'): src = x
+    elif x not in ('-c',) and not x.startswith('-fbracket-depth'): flags.append(x)
+    i += 1
+if out is None or src is None: sys.exit(f'fake metal: {" ".join(a)}?')
+data = sys.stdin.buffer.read() if src == '-' else open(src, 'rb').read()
+fail = os.environ.get('FAKE_METAL_FAIL')
+if b'FAKE_METAL_ERROR' in data or (fail and re.search(fail.encode(), data)):
+    sys.stderr.write('<stdin>:1:1: error: a compile error of the stand-in Metal compiler\n'); sys.exit(1)
+with open(out, 'wb') as f: f.write((b'FAKEPCH\n' if header else b'FAKEAIR\n' + ' '.join(flags).encode() + b'\n') + data)

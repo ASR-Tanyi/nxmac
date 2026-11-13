@@ -21,14 +21,29 @@ void Quote(std::string& out, std::string_view s, bool ensure_ascii) {
     for (std::size_t i = 0; i < s.size(); ++i) {
         const auto c = static_cast<unsigned char>(s[i]);
         switch (c) {
-            case '"': out += "\\\""; continue;
-            case '\\': out += "\\\\"; continue;
-            case '\n': out += "\\n"; continue;
-            case '\r': out += "\\r"; continue;
-            case '\t': out += "\\t"; continue;
-            case '\b': out += "\\b"; continue;
-            case '\f': out += "\\f"; continue;
-            default: break;
+            case '"':
+                out += "\\\"";
+                continue;
+            case '\\':
+                out += "\\\\";
+                continue;
+            case '\n':
+                out += "\\n";
+                continue;
+            case '\r':
+                out += "\\r";
+                continue;
+            case '\t':
+                out += "\\t";
+                continue;
+            case '\b':
+                out += "\\b";
+                continue;
+            case '\f':
+                out += "\\f";
+                continue;
+            default:
+                break;
         }
         if (c < 0x20) {
             absl::StrAppendFormat(&out, "\\u%04x", c);
@@ -51,7 +66,7 @@ void Quote(std::string& out, std::string_view s, bool ensure_ascii) {
 }
 
 struct Style {
-    bool indent = false;       // indent=1
+    bool indent = false;  // indent=1
     bool ensure_ascii = true;
     bool sort_keys = false;
     std::string_view item = ", ";
@@ -60,9 +75,15 @@ struct Style {
 
 void Dump(std::string& out, const Json& v, const Style& st, int level) {
     switch (v.kind()) {
-        case Json::Kind::kNull: out += "null"; return;
-        case Json::Kind::kBool: out += v.as_bool() ? "true" : "false"; return;
-        case Json::Kind::kInt: absl::StrAppend(&out, v.as_int()); return;
+        case Json::Kind::kNull:
+            out += "null";
+            return;
+        case Json::Kind::kBool:
+            out += v.as_bool() ? "true" : "false";
+            return;
+        case Json::Kind::kInt:
+            absl::StrAppend(&out, v.as_int());
+            return;
         case Json::Kind::kFloat: {
             const double d = v.as_float();
             if (std::isnan(d)) {
@@ -74,7 +95,9 @@ void Dump(std::string& out, const Json& v, const Style& st, int level) {
             }
             return;
         }
-        case Json::Kind::kString: Quote(out, v.as_string(), st.ensure_ascii); return;
+        case Json::Kind::kString:
+            Quote(out, v.as_string(), st.ensure_ascii);
+            return;
         case Json::Kind::kArray: {
             const Json::Array& a = v.array();
             if (a.empty()) {
@@ -108,7 +131,8 @@ void Dump(std::string& out, const Json& v, const Style& st, int level) {
             members.reserve(o.size());
             for (const Json::Member& m : o) members.push_back(&m);
             if (st.sort_keys) {
-                std::stable_sort(members.begin(), members.end(), [](const auto* a, const auto* b) { return a->first < b->first; });
+                std::stable_sort(members.begin(), members.end(),
+                                 [](const auto* a, const auto* b) { return a->first < b->first; });
             }
             out += '{';
             for (std::size_t i = 0; i < members.size(); ++i) {
@@ -231,8 +255,8 @@ private:
             if (ec == std::errc() && end == text.data() + text.size()) return Json(v);
             Fail("an integer past 64 bits");
         }
-        // float(text): Apple's libc++ has no std::from_chars for double, so Abseil's (locale-free, rounded as Python's);
-        // past the range of a double strtod gives what Python does (inf, or 0.0 and the smallest subnormals)
+        // float(text): Apple's libc++ has no std::from_chars for double, so Abseil's (locale-free, rounded as
+        // Python's); past the range of a double strtod gives what Python does (inf, or 0.0 and the smallest subnormals)
         double v = 0;
         const auto [end, ec] = absl::from_chars(text.data(), text.data() + text.size(), v);
         if (end != text.data() + text.size()) Fail("a number that does not read");
@@ -292,14 +316,30 @@ private:
             if (at_ >= s_.size()) Fail("an unterminated string");
             const char e = s_[at_++];
             switch (e) {
-                case '"': out += '"'; break;
-                case '\\': out += '\\'; break;
-                case '/': out += '/'; break;
-                case 'b': out += '\b'; break;
-                case 'f': out += '\f'; break;
-                case 'n': out += '\n'; break;
-                case 'r': out += '\r'; break;
-                case 't': out += '\t'; break;
+                case '"':
+                    out += '"';
+                    break;
+                case '\\':
+                    out += '\\';
+                    break;
+                case '/':
+                    out += '/';
+                    break;
+                case 'b':
+                    out += '\b';
+                    break;
+                case 'f':
+                    out += '\f';
+                    break;
+                case 'n':
+                    out += '\n';
+                    break;
+                case 'r':
+                    out += '\r';
+                    break;
+                case 't':
+                    out += '\t';
+                    break;
                 case 'u': {
                     std::uint32_t cp = Hex4();
                     if (cp >= 0xd800 && cp < 0xdc00 && s_.substr(at_, 2) == "\\u") {
@@ -315,7 +355,8 @@ private:
                     Utf8(out, cp);
                     break;
                 }
-                default: Fail("an unknown escape");
+                default:
+                    Fail("an unknown escape");
             }
         }
     }
@@ -327,10 +368,12 @@ private:
 }  // namespace
 
 Json::Json(unsigned long v) : kind_(Kind::kInt), int_(static_cast<long long>(v)) {
-    if (v > static_cast<unsigned long>(std::numeric_limits<long long>::max())) throw std::overflow_error("a JSON integer past 63 bits");
+    if (v > static_cast<unsigned long>(std::numeric_limits<long long>::max()))
+        throw std::overflow_error("a JSON integer past 63 bits");
 }
 Json::Json(unsigned long long v) : kind_(Kind::kInt), int_(static_cast<long long>(v)) {
-    if (v > static_cast<unsigned long long>(std::numeric_limits<long long>::max())) throw std::overflow_error("a JSON integer past 63 bits");
+    if (v > static_cast<unsigned long long>(std::numeric_limits<long long>::max()))
+        throw std::overflow_error("a JSON integer past 63 bits");
 }
 
 bool Json::as_bool() const {
@@ -369,13 +412,19 @@ Json::Object& Json::object() {
 
 bool Json::truthy() const {
     switch (kind_) {
-        case Kind::kNull: return false;
+        case Kind::kNull:
+            return false;
         case Kind::kBool:
-        case Kind::kInt: return int_ != 0;
-        case Kind::kFloat: return float_ != 0;
-        case Kind::kString: return !string_.empty();
-        case Kind::kArray: return !array_.empty();
-        case Kind::kObject: return !object_.empty();
+        case Kind::kInt:
+            return int_ != 0;
+        case Kind::kFloat:
+            return float_ != 0;
+        case Kind::kString:
+            return !string_.empty();
+        case Kind::kArray:
+            return !array_.empty();
+        case Kind::kObject:
+            return !object_.empty();
     }
     return false;
 }
@@ -425,10 +474,14 @@ void Json::push_back(Json value) {
 
 std::size_t Json::size() const {
     switch (kind_) {
-        case Kind::kString: return string_.size();
-        case Kind::kArray: return array_.size();
-        case Kind::kObject: return object_.size();
-        default: Wrong("a list, an object or a string");
+        case Kind::kString:
+            return string_.size();
+        case Kind::kArray:
+            return array_.size();
+        case Kind::kObject:
+            return object_.size();
+        default:
+            Wrong("a list, an object or a string");
     }
 }
 
@@ -436,16 +489,22 @@ bool operator==(const Json& a, const Json& b) {
     if (a.is_number() && b.is_number() && a.kind_ != b.kind_) return a.as_float() == b.as_float();
     if (a.kind_ != b.kind_) {
         // Python: True == 1
-        const bool ints = (a.kind_ == Json::Kind::kBool || a.kind_ == Json::Kind::kInt) && (b.kind_ == Json::Kind::kBool || b.kind_ == Json::Kind::kInt);
+        const bool ints = (a.kind_ == Json::Kind::kBool || a.kind_ == Json::Kind::kInt) &&
+                          (b.kind_ == Json::Kind::kBool || b.kind_ == Json::Kind::kInt);
         return ints && a.int_ == b.int_;
     }
     switch (a.kind_) {
-        case Json::Kind::kNull: return true;
+        case Json::Kind::kNull:
+            return true;
         case Json::Kind::kBool:
-        case Json::Kind::kInt: return a.int_ == b.int_;
-        case Json::Kind::kFloat: return a.float_ == b.float_;
-        case Json::Kind::kString: return a.string_ == b.string_;
-        case Json::Kind::kArray: return a.array_ == b.array_;
+        case Json::Kind::kInt:
+            return a.int_ == b.int_;
+        case Json::Kind::kFloat:
+            return a.float_ == b.float_;
+        case Json::Kind::kString:
+            return a.string_ == b.string_;
+        case Json::Kind::kArray:
+            return a.array_ == b.array_;
         case Json::Kind::kObject: {
             // dicts compare without regard to order
             if (a.object_.size() != b.object_.size()) return false;
@@ -515,15 +574,18 @@ std::string JsonIndent1(const Json& value) {
     return out;
 }
 
-std::string JsonLine(const Json& value) {
+std::string JsonLine(const Json& value, bool ensure_ascii) {
     std::string out;
-    Dump(out, value, Style{}, 0);
+    Style st;
+    st.ensure_ascii = ensure_ascii;
+    Dump(out, value, st, 0);
     return out;
 }
 
-std::string JsonSortedCompact(const Json& value) {
+std::string JsonSortedCompact(const Json& value, bool ensure_ascii) {
     std::string out;
     Style st;
+    st.ensure_ascii = ensure_ascii;
     st.sort_keys = true;
     st.item = ",";
     st.key = ":";

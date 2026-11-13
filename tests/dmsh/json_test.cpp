@@ -1,9 +1,10 @@
 // JSON as Python's json module writes it (src/dmsh/json.h): the expected texts are Python 3.13's.
+#include "json.h"
+
 #include <string>
 #include <utility>
 
 #include "gtest/gtest.h"
-#include "json.h"
 
 namespace nxmac::dmsh {
 namespace {
@@ -23,8 +24,10 @@ TEST(JsonTest, Indent1AsJsonDump) {
     v["c"] = Json::MakeArray();
     v["d"] = d;
     EXPECT_EQ(JsonIndent1(v),
-              "{\n \"a\": [\n  1,\n  2.5,\n  \"x\\n\\\"\xc3\xa9\",\n  null,\n  true,\n  {}\n ],\n \"b\": {},\n \"c\": [],\n \"d\": {\n"
-              "  \"e\": 1e-07,\n  \"f\": 1e+16,\n  \"g\": 123456789.125,\n  \"h\": 0.1,\n  \"i\": 5e-324,\n  \"j\": 1.0,\n  \"k\": -0.0\n }\n}");
+              "{\n \"a\": [\n  1,\n  2.5,\n  \"x\\n\\\"\xc3\xa9\",\n  null,\n  true,\n  {}\n ],\n \"b\": {},\n \"c\": "
+              "[],\n \"d\": {\n"
+              "  \"e\": 1e-07,\n  \"f\": 1e+16,\n  \"g\": 123456789.125,\n  \"h\": 0.1,\n  \"i\": 5e-324,\n  \"j\": "
+              "1.0,\n  \"k\": -0.0\n }\n}");
 }
 
 TEST(JsonTest, OneLineAndSorted) {
@@ -48,14 +51,17 @@ TEST(JsonTest, FloatRepr) {
 }
 
 TEST(JsonTest, ParsesAndKeepsOrder) {
-    const auto v = JsonParse("{\"b\": [1, -2, 3.5, \"a\\u00e9\\n\", true, false, null], \"a\": {\"x\": {}}, \"b2\": 1e3} ");
+    const auto v =
+        JsonParse("{\"b\": [1, -2, 3.5, \"a\\u00e9\\n\", true, false, null], \"a\": {\"x\": {}}, \"b2\": 1e3} ");
     ASSERT_TRUE(v.ok()) << v.status();
     EXPECT_EQ(v->object()[0].first, "b");
     EXPECT_EQ(v->at("b").array()[1].as_int(), -2);
     EXPECT_EQ(v->at("b").array()[3].as_string(), "a\xc3\xa9\n");
     EXPECT_TRUE(v->at("b2").kind() == Json::Kind::kFloat);
-    EXPECT_EQ(JsonLine(*v), "{\"b\": [1, -2, 3.5, \"a\\u00e9\\n\", true, false, null], \"a\": {\"x\": {}}, \"b2\": 1000.0}");
-    for (const char* bad : {"", "{", "[1,]", "{\"a\" 1}", "nul", "1 2", "\"abc"}) EXPECT_FALSE(JsonParse(bad).ok()) << bad;
+    EXPECT_EQ(JsonLine(*v),
+              "{\"b\": [1, -2, 3.5, \"a\\u00e9\\n\", true, false, null], \"a\": {\"x\": {}}, \"b2\": 1000.0}");
+    for (const char* bad : {"", "{", "[1,]", "{\"a\" 1}", "nul", "1 2", "\"abc"})
+        EXPECT_FALSE(JsonParse(bad).ok()) << bad;
 }
 
 TEST(JsonTest, ParsesFloatsAsPython) {

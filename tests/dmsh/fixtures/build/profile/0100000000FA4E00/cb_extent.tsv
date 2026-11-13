@@ -1,0 +1,5 @@
+# chain b-7c609af36b0f inputs 9ba132c8e599 2026-11-12T18:09:23+08:00
+# shader key, then reg:bytes for each uniform slot whose reads stay inside its first bytes, and s<reg> for each storage slot it never writes (cb_extent.py)
+323e368a9a5d482d	0:16
+5511e7e36b75f95d	0:16
+c6c05d03e0343cf4	0:32

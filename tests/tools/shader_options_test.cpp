@@ -30,6 +30,26 @@ TEST(ShaderOptionsTest, Split) {
     EXPECT_EQ(o->profiles, "p.tsv");
 }
 
+TEST(ShaderOptionsTest, Build) {
+    const absl::StatusOr<Options> o =
+        Parse({"build", "-g", "01007EF00011E000", "--nxnative", "../nxnative", "-o", "out", "--tables", "t",
+               "--cache=c", "--min-macos", "none", "-j", "6", "w/shader/pkg"});
+    ASSERT_TRUE(o.ok()) << o.status();
+    EXPECT_EQ(o->command, "build");
+    EXPECT_THAT(o->romfs, ElementsAre("w/shader/pkg"));
+    EXPECT_EQ(o->nxnative, "../nxnative");
+    EXPECT_EQ(o->tables, "t");
+    EXPECT_EQ(o->cache, "c");
+    EXPECT_EQ(o->min_macos, "");
+    EXPECT_EQ(o->jobs, 6);
+    const absl::StatusOr<Options> p =
+        Parse({"build", "--profile", "prof", "--xlate", "x/dmsh_xlate", "-o", "out", "pkg"});
+    ASSERT_TRUE(p.ok()) << p.status();
+    EXPECT_EQ(p->profile, "prof");
+    EXPECT_EQ(p->xlate, "x/dmsh_xlate");
+    EXPECT_EQ(p->min_macos, "15.0");
+}
+
 TEST(ShaderOptionsTest, ProfileAndHelp) {
     const absl::StatusOr<Options> p = Parse({"profile", "01007EF00011E000", "0100000000010000"});
     ASSERT_TRUE(p.ok()) << p.status();
@@ -52,6 +72,14 @@ TEST(ShaderOptionsTest, Refuses) {
         {{"split", "--bogus"}, "unknown option"},
         {{"profile"}, "at least one title ID"},
         {{"profile", "x", "-o", "o"}, "only -p"},
+        {{"build", "--profile", "p", "--xlate", "x", "pkg"}, "-o <dir>"},
+        {{"build", "--profile", "p", "--xlate", "x", "-o", "o"}, "one package folder"},
+        {{"build", "--profile", "p", "--xlate", "x", "-o", "o", "a", "b"}, "one package folder"},
+        {{"build", "--xlate", "x", "-o", "o", "pkg"}, "--profile <dir>, or -g <id> with --nxnative <dir>"},
+        {{"build", "-g", "x", "--xlate", "x", "-o", "o", "pkg"}, "--profile <dir>, or -g <id> with --nxnative <dir>"},
+        {{"build", "--profile", "p", "-o", "o", "pkg"}, "--xlate <file>, or --nxnative <dir>"},
+        {{"build", "--profile", "p", "--xlate", "x", "-o", "o", "--main", "m", "pkg"}, "takes no --main"},
+        {{"split", "-g", "x", "-o", "o", "--main", "m", "--xlate", "x", "r"}, "takes no build options"},
     };
     for (const auto& [args, why] : bad) {
         const absl::StatusOr<Options> o = Parse(args);

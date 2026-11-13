@@ -1,0 +1,12 @@
+{
+  "key": "d09f7dd8670b7e97",
+  "stage": "vs",
+  "notes": [],
+  "cbufs": [],
+  "sbufs": [],
+  "textures": [],
+  "images": [],
+  "geometry_stride": 0,
+  "uses_frag_coord": false,
+  "frag_out_map": 0
+}

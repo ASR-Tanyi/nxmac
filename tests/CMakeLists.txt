@@ -62,11 +62,13 @@ target_compile_definitions(shader_test PRIVATE "NXMAC_SHADER_FIXTURES=\"${CMAKE_
 # The shader command line, in-process
 nxmac_add_test(shader_tool_test
   SOURCES tools/shader_options_test.cpp tools/shader_test.cpp
-  LIBS nxmac_shader_tool)
-target_compile_definitions(shader_tool_test PRIVATE "NXMAC_SHADER_FIXTURES=\"${CMAKE_CURRENT_SOURCE_DIR}/shader/fixtures\"")
+  LIBS nxmac_shader_tool absl::strings)
+target_compile_definitions(shader_tool_test PRIVATE "NXMAC_SHADER_FIXTURES=\"${CMAKE_CURRENT_SOURCE_DIR}/shader/fixtures\""
+  "NXMAC_DMSH_FIXTURES=\"${CMAKE_CURRENT_SOURCE_DIR}/dmsh/fixtures\"")
 
 # nxmac::dmsh: its Python-compatible layers, and its ports of dmsh_build.py's modules held to the Python functions
 nxmac_add_test(dmsh_test
-  SOURCES dmsh/json_test.cpp dmsh/re_test.cpp
-  LIBS nxmac::dmsh absl::strings)
+  SOURCES dmsh/build_test.cpp dmsh/calls_test.cpp dmsh/json_test.cpp dmsh/re_test.cpp
+  LIBS nxmac::dmsh nxmac::fs ZLIB::ZLIB absl::strings)
 target_include_directories(dmsh_test PRIVATE "${PROJECT_SOURCE_DIR}/src/dmsh")   # its internals
+target_compile_definitions(dmsh_test PRIVATE "NXMAC_DMSH_FIXTURES=\"${CMAKE_CURRENT_SOURCE_DIR}/dmsh/fixtures\"")

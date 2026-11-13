@@ -9,6 +9,7 @@
 #include <stdexcept>
 #include <unordered_map>
 
+#include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
 
 namespace nxmac::dmsh::re {
@@ -134,10 +135,11 @@ Pattern::Pattern(std::string_view pattern, unsigned flags) : code_(std::make_sha
     int error = 0;
     PCRE2_SIZE offset = 0;
     code_->source = std::string(pattern);
-    code_->code = pcre2_compile(reinterpret_cast<PCRE2_SPTR>(translated.data()), translated.size(), options, &error, &offset,
-                                nullptr);
+    code_->code = pcre2_compile(reinterpret_cast<PCRE2_SPTR>(translated.data()), translated.size(), options, &error,
+                                &offset, nullptr);
     if (!code_->code) {
-        throw std::invalid_argument(absl::StrCat("regular expression ", pattern, ": ", ErrorText(error), " at ", offset));
+        throw std::invalid_argument(
+            absl::StrCat("regular expression ", pattern, ": ", ErrorText(error), " at ", offset));
     }
     code_->jit = pcre2_jit_compile(code_->code, PCRE2_JIT_COMPLETE) == 0;
     std::uint32_t count = 0;
@@ -233,7 +235,7 @@ std::string Pattern::sub(const Replace& repl, std::string_view s, std::size_t co
 }
 
 std::string Pattern::sub(std::string_view tmpl, std::string_view s, std::size_t count, std::size_t* n) const {
-    if (tmpl.find('\\') == std::string_view::npos) {
+    if (!absl::StrContains(tmpl, '\\')) {
         return sub([&](const Match&) { return std::string(tmpl); }, s, count, n);
     }
     return sub([&](const Match& m) { return m.expand(tmpl); }, s, count, n);
@@ -312,7 +314,8 @@ std::string Match::expand(std::string_view tmpl) const {
         } else if (n >= '0' && n <= '9') {
             // \1 .. \99 (Python reads \0 and three octal digits as a character, which no ported template uses)
             int number = n - '0';
-            if (i + 1 < tmpl.size() && tmpl[i + 1] >= '0' && tmpl[i + 1] <= '9' && number * 10 + (tmpl[i + 1] - '0') <= groups()) {
+            if (i + 1 < tmpl.size() && tmpl[i + 1] >= '0' && tmpl[i + 1] <= '9' &&
+                number * 10 + (tmpl[i + 1] - '0') <= groups()) {
                 number = number * 10 + (tmpl[++i] - '0');
             }
             out.append(group(number));
@@ -345,7 +348,8 @@ std::optional<Match> fullmatch(std::string_view pattern, std::string_view s, uns
     return Cached(pattern, flags)->fullmatch(s);
 }
 
-std::string sub(std::string_view pattern, std::string_view tmpl, std::string_view s, std::size_t count, unsigned flags) {
+std::string sub(std::string_view pattern, std::string_view tmpl, std::string_view s, std::size_t count,
+                unsigned flags) {
     return Cached(pattern, flags)->sub(tmpl, s, count);
 }
 
@@ -358,7 +362,7 @@ std::string escape(std::string_view text) {
     static constexpr std::string_view special = "()[]{}?*+-|^$\\.&~# \t\n\r\v\f";
     std::string out;
     for (const char c : text) {
-        if (special.find(c) != std::string_view::npos) out += '\\';
+        if (absl::StrContains(special, c)) out += '\\';
         out += c;
     }
     return out;

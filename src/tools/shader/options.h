@@ -18,8 +18,9 @@ enum ExitCode : int {
 };
 
 struct Options {
-    std::string command;             // split, profile or help
-    std::vector<std::string> romfs;  // split: each version's RomFS, base game first; profile: title IDs
+    std::string command;  // split, build, profile or help
+    std::vector<std::string>
+        romfs;  // split: each version's RomFS, base game first; build: the package folder; profile: title IDs
     std::vector<std::string> mains;  // --main, one per RomFS, in the same order
     std::vector<std::string> dlc;    // --dlc
     std::string out;                 // -o
@@ -27,6 +28,13 @@ struct Options {
     std::string profiles;            // -p: a profile table instead of the built-in one
     std::string glslc_capture;       // --glslc-capture
     int jobs = 0;                    // 0: one file per CPU
+    // build
+    std::string nxnative;            // --nxnative: nxnative's checkout, for the default profile folder and translator
+    std::string profile;             // --profile: the game's profile folder
+    std::string xlate;               // --xlate: the translator
+    std::string tables;              // --tables
+    std::string cache;               // --cache
+    std::string min_macos = "15.0";  // --min-macos (none: "")
 };
 
 // args: the arguments after the program's name. InvalidArgument names what is wrong.

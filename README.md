@@ -4,10 +4,10 @@ A C++20 rewrite of [nxnative](../nxnative)'s Mac host (`dm/host`, `dm/gfx`) and,
 
 ## Requirements
 
-- An Apple silicon Mac with macOS 26.6 or later and Xcode 27.2, as for nxnative.
+- An Apple silicon Mac with macOS 15 or later and Xcode 26 or later: what nxmac builds runs on macOS 15 (`CMAKE_OSX_DEPLOYMENT_TARGET`), and the shader libraries `shader build` compiles take macOS 15 as their minimum too. (nxnative itself asks for macOS 26.6 and Xcode 27.2.) `shader build` runs Xcode's Metal compiler, which Xcode 26 downloads as a component of its own: `xcodebuild -downloadComponent MetalToolchain` when it is missing.
 - `brew install cmake ninja`, and `brew install llvm` for clang-tidy and clang-format (Xcode ships neither; CMake finds them in Homebrew's llvm without a PATH change).
 - Python 3.12 or newer (as nxnative), for its `dm/games/game.py`, which writes the game profile header.
-- Network on the first configure of each build folder: Abseil, Mbed TLS and GoogleTest are downloaded, pinned and hash-checked, and Capstone 5.0.9 is fetched from its repository at the commit of that release (so `git` is needed).
+- Network on the first configure of each build folder: Abseil, Mbed TLS and GoogleTest are downloaded, pinned and hash-checked, and Capstone 5.0.9, PCRE2 10.47 and SPIRV-Cross (vulkan-sdk-1.4.363.0, the commit nxnative's `spirv_cross_bin/build.sh` pins) are fetched from their repositories at those commits (so `git` is needed).
 
 ## Build
 
@@ -52,11 +52,14 @@ src/core/         nxmac::core: portable C++ the host and the tools share; no App
 src/fs/           nxmac::fs: the Switch's content formats, read and hash-checked (what nx_extract did with LibHac); portable
 src/rewriter/     nxmac::rewriter: the NSO rewriter (nxnative's patch_nso.py), its patch tables (patches.tsv) and each game's stub code (games/); portable
 src/shader/       nxmac::shader: the shader split (nxnative's shader_split.py) and its profile table (profiles.tsv); portable
+src/dmsh/         nxmac::dmsh: the shader build (nxnative's dmsh_build.py and its modules), on PCRE2 and SPIRV-Cross; portable
+                  but for the Metal compile, which runs Xcode's tools
 src/gfx/          nxmac::gfx: NVN / Vulkan / GL on Metal; Objective-C++ (.mm) inside, plain C++ headers outside
 src/host/         nxhost (nxnative's dmhost): loader, SVC gate (.S), services; built for NXMAC_GAME
 src/tools/        native replacements for nxnative's tools: nxmac_add_tool(<name> SOURCES ...); nsp/, nso/ and shader/
 tools/            scripts: export_patches.py (nxnative's patch tables -> src/rewriter/patches.tsv), export_shader_profiles.py
-                  (the profiles' shader values -> src/shader/profiles.tsv)
+                  (the profiles' shader values -> src/shader/profiles.tsv), export_dmsh_abi.py (nxnative's shader library
+                  ABI and chain version -> src/dmsh/abi.h)
 tests/            GoogleTest per module: nxmac_add_test(<name> SOURCES ... LIBS ...)
 ```
 
@@ -151,6 +154,26 @@ done
 DM_GAME=01007EF00011E000 ../venv/bin/python3 ../nxnative/dm/gfx/tools/dmsh_build.py $w/shader/pkg <shader cache folder>
 ```
 
+Then the game's shader library, from that package: nxnative's `dm/gfx/tools/dmsh_build.py`, rewritten (`shader build`). Each shader goes through nxnative's translator (`dmsh_xlate`, its committed executable, which `shader build` runs), through SPIRV-Cross (linked in, at nxnative's commit) to Metal source, through the rewrites, entry points and reflection of `dmsh_build.py`'s modules, and through Xcode's Metal compiler:
+
+```sh
+$shader build -g 01007EF00011E000 --nxnative ../nxnative -o $w/shader/lib $w/shader/pkg
+```
+
+`--nxnative` names nxnative's checkout, where the profile folder (`dm/games/<id>`: `game.tsv` and the shader tables) and the translator (`dm/gfx/tools/dmsh_xlate_bin/dmsh_xlate`) are; `--profile <dir>` and `--xlate <file>` give them on their own. The library is `<out>/b-<chain>.img` (chain `7c609af36b0f`, nxnative's `dm/gfx/nvn/dmsh_chain.h`, the version nxmac ports): every shader's `<key>_b.metal`, `<key>_b.json` (its reflection) and libraries (`_b`, and `_bx`, `_bf`, `_bv`, `_bp` where `dmsh_build.py` makes them), `_b_build.json` and the stamp `inputs.tsv`. Beside it (or in `--tables`) go `c1_full.tsv` and `cb_extent.tsv`, which nxnative's host reads from the profile folder. What it prints is `dmsh_build.py`'s: `[RED]` lines for a shader that does not build or a library left out, the summary. A shader that does not build is reported and left out; a stop (a package and a map from different splits, a translator of another chain, a library folder of another game) has exit code 1 and leaves no library.
+
+The libraries are compiled for macOS 15 and later (`-mmacosx-version-min=15.0`, which the reflection's `chain_metal` records); `--min-macos none` compiles as nxnative does, for the SDK's own minimum, and the library is then the same files, byte for byte, as `dmsh_build.py`'s with the same tools (but for `_b_cas.txt`, the list of `dmsh_build.py`'s own cache entries). nxmac keeps its own cache in `<out>/cache` (`--cache`): every finished shader under the digest of everything that goes into it (its record and table rows, the tools, nxmac's own executable), and every Metal library under the digest of its source and compiler, so a second build of the same game takes each shader from there; remove the folder to take the space back. To compare with `dmsh_build.py` (nxnative's venv, as its docs/development.md builds the libraries) on BotW:
+
+```sh
+DM_GAME=01007EF00011E000 ../venv/bin/python3 ../nxnative/dm/gfx/tools/dmsh_build.py $w/shader/pkg $w/shader/lib_py
+$shader build -g 01007EF00011E000 --nxnative ../nxnative --min-macos none -o $w/shader/lib $w/shader/pkg
+python3 -c "import sys; sys.path.insert(0, '../nxnative/dm/tools'); import romfs
+def files(p):
+    with romfs.scandir(p) as it: return {e.name: romfs.open(e.path, 'rb').read() for e in it}
+a, b = files('$w/shader/lib_py/b-7c609af36b0f.img'), files('$w/shader/lib/b-7c609af36b0f.img')
+print(sorted(n for n in a.keys() | b.keys() if a.get(n) != b.get(n)))"   # only _b_cas.txt
+```
+
 ## nxmac::shader
 
 The library shader is built on (`src/shader`), a port of `shader_split.py` that keeps its order of work and its names: `scan.cpp` is its `scan_file` and `scan_blob`, `readers.cpp` its readers, `split.cpp` its `main`. Every file of the RomFS goes through the same dispatch, so that what is ported reads every file as `shader_split.py` does:
@@ -166,6 +189,18 @@ The RomFS is read through `nxmac::fs` (a DMROMFS1 image, or a folder) and main t
 **Not ported yet.** The readers of other engines' files: Unity (`unityfs.py`), Unreal (`uepak.py`, the shader code archives and Unreal Engine 3's caches), zstd files and HAL's size-prefixed frames (with Tears of the Kingdom's dictionaries), compressed XNB files, KTGL's archives and shader packages, RE Engine, MT Framework, Bezel Engine, Game Freak's GFPAK and Trinity packs, Retro Studios, Snowdrop, Criterion's Bundle 2, Heaps, Monolith, Next Level Games, Double Eleven, CRI's CPK, Camelot, PlatinumGames' PKZ, FromSoftware's dvdbnd, phx, RAGE's RPF6, Frostbite, zip archives, and the NROs a boot captures (`DM_NRO_DIR`). A file in one of these forms is left out with a `[RED]` line that says its reader is not ported (it counts among the files that could not be read); an archive `shader_split.py` takes apart as a whole before the scan (a zip, a CPK, an Unreal pak, a LINKDATA archive, Super Smash Bros. Ultimate's data.arc, ...) stops the split, and so do Tears of the Kingdom's zstd dictionaries and decoded Unreal shader code archives beside the RomFS.
 
 **Tests.** `shader_test` holds the split to nxnative's: `tests/shader/fixtures/cases` has made-up games (no game data), one per form above, a DMROMFS1 image, several versions with DLC, damaged files and other engines' files, and `expected.tsv` and `lines.tsv` have the SHA-256 of every file `shader_split.py` writes for them and what it prints. `fixtures/src/make_fixtures.sh` makes them again (it needs nxnative and Python 3.12).
+
+## nxmac::dmsh
+
+The library `shader build` is built on (`src/dmsh`), a port of `dmsh_build.py` and the modules it runs a shader through, function by function and with their names: `rewrite.cpp` is `dmsh_rewrite.py`, `reflect.cpp` `dmsh_reflect.py`, `entry.cpp` `dmsh_entry.py`, `fetch.cpp` `dmsh_fetch.py`, `side.cpp` `dmsh_side.py` with `dmsh_alpha.py` and `dmsh_logic.py`, `misc.cpp` `dmsh_atomic.py`, `dmsh_wide.py`, `dmsh_vin.py`, `dmsh_pull.py` and the vertex capture of `dmsh_geometry.py`, `guard.cpp` `c1_guard.py` and `cb_extent.py`, `build.cpp` `dmsh_build.py` itself. The modules rewrite Metal source with some 270 regular expressions; `re.cpp` matches them with PCRE2 as Python's `re` does (its anchors, its stepping over empty matches, its replacement templates), and `json.cpp` writes the reflection as `json.dump(indent=1)` does. SPIRV-Cross's command line is compiled in (`cross.cpp`), so the same arguments give the same source.
+
+What is ported is Breath of the Wild's path: vertex, pixel and compute shaders of NVN 1 (Maxwell), with everything their build gives them: the second translation of integer inputs, the MSL rewrites, the depth, capture, discard, transform feedback and layer entry points of a vertex shader and its padding for its pixel shaders, its shadow-input and pulling libraries; a pixel shader's integer, dual-source, alpha test, logic operation and readable-tile entry points and their libraries cut from one compile; a compute shader's first stores and shared memory past 32 KB; the reflection, `c1_full.tsv` and `cb_extent.tsv`.
+
+**Not ported yet.** Geometry and tessellation shaders (the geometry stage as compute, `dmsh_geometry.py`; the mesh libraries of `geo_mesh.tsv`, `dmsh_mesh.py`), NVN 2 (Switch 2) shaders (`dmsh_ampere.py`, `dmsh_meshstage.py`, Ampere's HMMA), the iPhone's libraries (`IOSOUT`) and partial builds (`dmsh_build.py <pkg> <out> <key>...`). Such a shader is reported (`[RED]`, "not ported to nxmac yet") and left out.
+
+**Translation chain.** The chain version names what nxnative's host loads (`b-<V>/`); nxmac's port is of the chain `7c609af36b0f`. `tools/export_dmsh_abi.py` writes `src/dmsh/abi.h` from nxnative's `dm/gfx/nvn/dmsh_abi.h` (the driver segment layout and the binding kinds) and `dmsh_chain.h`; when nxnative's chain moves, run it and port what changed in the chain's tools. The translator must be of the same chain: `shader build` stops when its embedded source digest is not the lock file's (`657232fd201f16a1`), and says so when the executable is not nxnative's committed build or the Metal compiler is not the lock file's.
+
+**Tests.** `dmsh_test` holds the ports to the Python: `tests/dmsh/fixtures/calls.jsonl.gz` has 1,208 calls of the modules' functions, recorded while nxnative's own unit tests ran (`fixtures/src/record_calls.py`), with what each returned or raised, and every one is made again. `tests/dmsh/fixtures/build` is a made-up game, eleven Maxwell programs assembled by `src/gen.py`, whose library `dmsh_build.py` built (`expected/`); `BuildTest` builds it and must get the same files, byte for byte. Its translator is replayed (`bin/dmsh_xlate` gives each job what nxnative's translator gave it, recorded by `src/rec_xlate.py`), and its Metal tools are stand-ins (`bin/xcrun`, `metal`, `metallib`, python3 scripts that compile nothing but lay a library out as Metal's are), so the test runs on Linux too.
 
 ## nxmac::fs
 
@@ -188,7 +223,7 @@ build/release/bin/fs_real_test
 
 | Job | Runner | What it checks |
 |---|---|---|
-| Linux debug, asan, tsan | `ubuntu-24.04`, clang 18 | core, fs, the rewriter, the shader split, tools and tests (the host and gfx are Mac-only) |
+| Linux debug, asan, tsan | `ubuntu-24.04`, clang 18 | core, fs, the rewriter, the shader split and build, tools and tests (the host and gfx are Mac-only) |
 | Mac debug, asan, tsan | `xcode-27` (Xcode 27.2, as nxnative) | everything, the host built for `GAME`; the tests, then an `nxhost` start |
 | clang-format and clang-tidy | `xcode-27`, LLVM 23.1.4 (nxnative's lint-c.yml pin) | `format-check`, then the `tidy` preset |
 
@@ -196,4 +231,4 @@ The Mac jobs take the game's profile from nxnative at the commit `NXNATIVE_REF` 
 
 ## Adding code
 
-Where new code goes: the Switch's content formats into `src/fs`, the rewriter's rules into `src/rewriter` and a build's stub code into `src/rewriter/games/<title ID>.cpp`, the shader split's readers into `src/shader/readers.cpp` (and their dispatch into `scan.cpp`), the commands of a tool into `src/tools/<tool>/` (a library, so that its tests run it in-process, and a `main.cpp`); anything else without Apple APIs into `src/core`, with its tests in `tests/`; Metal and Objective-C++ into `src/gfx`; the host's own code into `src/host`. Every target calls `nxmac_target_defaults()` (`cmake/NxmacTargets.cmake`) for its warnings, ARC and clang-tidy. `src/core/title_id.*` is a first, small piece that proves the chain (Abseil, tests, sanitizers); it can stay or go.
+Where new code goes: the Switch's content formats into `src/fs`, the rewriter's rules into `src/rewriter` and a build's stub code into `src/rewriter/games/<title ID>.cpp`, the shader split's readers into `src/shader/readers.cpp` (and their dispatch into `scan.cpp`), the shader build's modules into `src/dmsh` (beside the Python function they port), the commands of a tool into `src/tools/<tool>/` (a library, so that its tests run it in-process, and a `main.cpp`); anything else without Apple APIs into `src/core`, with its tests in `tests/`; Metal and Objective-C++ into `src/gfx`; the host's own code into `src/host`. Every target calls `nxmac_target_defaults()` (`cmake/NxmacTargets.cmake`) for its warnings, ARC and clang-tidy. `src/core/title_id.*` is a first, small piece that proves the chain (Abseil, tests, sanitizers); it can stay or go.

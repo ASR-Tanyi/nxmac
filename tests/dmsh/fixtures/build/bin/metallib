@@ -1,0 +1,26 @@
+#!/usr/bin/env python3
+# A stand-in for Apple's metallib: from the stand-in compiler's "AIR", a file laid out as a Metal library is (header, function list with NAME / MDSZ / OFFT tags, public and private
+# metadata, bitcode), with one function for each entry point of the source, so that tools that cut a library by its functions have something to cut. Nothing in it is code.
+import hashlib, re, struct, sys
+a = sys.argv[1:]
+if a == ['--version']: print('Apple metallib version 32023.922 (metalfe-32023.922.4)\nInstalledDir: /fake/Xcode.app/usr/bin'); sys.exit(0)
+if len(a) != 3 or a[1] != '-o': sys.exit(f'fake metallib: {" ".join(a)}?')
+air = open(a[0], 'rb').read()
+if not air.startswith(b'FAKEAIR\n'): sys.exit('fake metallib: not the stand-in compiler\'s output')
+flags, _, src = air[8:].partition(b'\n')
+names = [m.group(2).decode() for m in re.finditer(rb'^(?:\[\[[^\]]*\]\]\s*)?(?:vertex|fragment|kernel)\s+(\w+)\s+(\w+)\s*\(', src, re.M)]
+names += [m.group(1).decode() for m in re.finditer(rb'^\[\[(?:mesh|object)[^\]]*\]\]\s*\w+\s+(\w+)\s*\(', src, re.M) if m.group(1).decode() not in names]
+fns, pub, priv, code = [], b'', b'', b''
+for n in names:
+    h = hashlib.sha256(flags + b'\0' + n.encode() + b'\0' + src).digest()
+    p = struct.pack('<I', 16) + h[:16]; q = struct.pack('<I', 8) + h[16:24]; c = b'BC' + h * (2 + len(n) % 3)
+    tags = [(b'NAME', n.encode() + b'\0'), (b'TYPE', b'\x01'), (b'HASH', h), (b'MDSZ', struct.pack('<Q', len(c))), (b'OFFT', struct.pack('<QQQ', len(pub), len(priv), len(code))), (b'VERS', struct.pack('<4H', 2, 7, 3, 2))]
+    body = b''.join(t + struct.pack('<H', len(v)) + v for t, v in tags) + b'ENDT'
+    fns.append(struct.pack('<I', len(body) + 4) + body); pub += p; priv += q; code += c
+listing = struct.pack('<I', len(fns)) + b''.join(fns)
+tail = struct.pack('<I', 4) + b'ENDT'
+fo = 0x58; po = fo + len(listing) + len(tail); qo = po + len(pub); bo = qo + len(priv)
+head = bytearray(0x58); head[:4] = b'MTLB'; struct.pack_into('<HHHHH', head, 4, 0x8001, 2, 7, 0, 0x8100)
+struct.pack_into('<Q', head, 0x10, bo + len(code))
+struct.pack_into('<8Q', head, 0x18, fo, len(listing), po, len(pub), qo, len(priv), bo, len(code))
+open(a[2], 'wb').write(bytes(head) + listing + tail + pub + priv + code)

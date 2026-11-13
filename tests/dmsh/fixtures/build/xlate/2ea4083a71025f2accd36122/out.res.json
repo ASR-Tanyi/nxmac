@@ -1,0 +1,18 @@
+{
+  "key": "5511e7e36b75f95d",
+  "stage": "vs",
+  "notes": [],
+  "cbufs": [
+    {
+      "binding": 1,
+      "slot": 3,
+      "fixed": 8
+    }
+  ],
+  "sbufs": [],
+  "textures": [],
+  "images": [],
+  "geometry_stride": 0,
+  "uses_frag_coord": false,
+  "frag_out_map": 0
+}

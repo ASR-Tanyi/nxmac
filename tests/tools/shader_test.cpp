@@ -1,12 +1,14 @@
 // shader run in-process on the golden fixtures: what it writes and prints, and its exit codes.
 #include "shader/shader.h"
 
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <sstream>
 #include <string>
 #include <vector>
 
+#include "absl/strings/str_split.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "shader/options.h"
@@ -70,6 +72,37 @@ TEST(ShaderTest, ReportsAMissingProfileOrRomFs) {
     r = Shader({"split", "-g", "01007EF00011E000", "-o", "x", "--main", "m", "/nonexistent/RomFS"});
     EXPECT_EQ(r.code, kFailed);
     EXPECT_THAT(r.err, HasSubstr("no RomFS folder or DMROMFS1 image there"));
+}
+
+// The build on the made-up game of tests/dmsh/fixtures/build, its translator replayed and its Metal tools stand-ins
+// (python3 scripts: dmsh_test's BuildTest holds the library to dmsh_build.py's; here, the command line around it)
+TEST(ShaderTest, BuildsALibrary) {
+    const char* path_env = std::getenv("PATH");
+    const std::string paths = path_env ? path_env : "";
+    bool python = false;  // on PATH
+    for (const std::string_view dir : absl::StrSplit(paths, ':'))
+        python = python || std::filesystem::exists(std::filesystem::path(dir) / "python3");
+    if (!python) GTEST_SKIP() << "the stand-in tools need python3";
+    const std::string fixtures = NXMAC_DMSH_FIXTURES "/build";
+    const std::string old = paths.empty() ? "/usr/bin:/bin" : paths;
+    setenv("PATH", (fixtures + "/bin:" + old).c_str(), 1);
+    const std::filesystem::path out = std::filesystem::path(::testing::TempDir()) / "shader_tool_build";
+    std::filesystem::remove_all(out);
+    Outcome r = Shader({"build", "--profile", fixtures + "/profile/0100000000FA4E00", "--xlate",
+                        fixtures + "/bin/dmsh_xlate", "--min-macos", "none", "-o", out.string(), "--tables",
+                        (out / "tables").string(), "-j", "2", fixtures + "/pkg"});
+    EXPECT_EQ(r.code, kOk) << r.err << r.out;
+    EXPECT_THAT(r.out, HasSubstr("shaders 11: ok 11, \n"));
+    EXPECT_THAT(r.out, HasSubstr("b-7c609af36b0f.img: 11 of 11 shaders\n"));
+    EXPECT_TRUE(std::filesystem::exists(out / "b-7c609af36b0f.img"));
+    EXPECT_TRUE(std::filesystem::exists(out / "tables" / "cb_extent.tsv"));
+    r = Shader({"build", "--profile", (out / "nowhere").string(), "--xlate", fixtures + "/bin/dmsh_xlate", "-o",
+                out.string(), fixtures + "/pkg"});
+    EXPECT_EQ(r.code, kFailed);
+    EXPECT_THAT(r.err, HasSubstr("[RED] "));
+    EXPECT_THAT(r.err, HasSubstr("no game.tsv"));
+    setenv("PATH", old.c_str(), 1);
+    std::filesystem::remove_all(out);
 }
 
 TEST(ShaderTest, ProfileCommand) {

@@ -21,16 +21,16 @@ public:
     using Member = std::pair<std::string, Json>;
     using Object = std::vector<Member>;
 
-    Json() = default;  // null (Python's None)
-    Json(std::nullptr_t) {}                                      // NOLINT(google-explicit-constructor)
-    Json(bool v) : kind_(Kind::kBool), int_(v) {}                // NOLINT(google-explicit-constructor)
-    Json(int v) : kind_(Kind::kInt), int_(v) {}                  // NOLINT(google-explicit-constructor)
-    Json(unsigned v) : kind_(Kind::kInt), int_(v) {}             // NOLINT(google-explicit-constructor)
-    Json(long v) : kind_(Kind::kInt), int_(v) {}                 // NOLINT(google-explicit-constructor)
-    Json(long long v) : kind_(Kind::kInt), int_(v) {}            // NOLINT(google-explicit-constructor)
-    Json(unsigned long v);                                       // NOLINT(google-explicit-constructor)
-    Json(unsigned long long v);                                  // NOLINT(google-explicit-constructor)
-    Json(double v) : kind_(Kind::kFloat), float_(v) {}           // NOLINT(google-explicit-constructor)
+    Json() = default;                                                     // null (Python's None)
+    Json(std::nullptr_t) {}                                               // NOLINT(google-explicit-constructor)
+    Json(bool v) : kind_(Kind::kBool), int_(v) {}                         // NOLINT(google-explicit-constructor)
+    Json(int v) : kind_(Kind::kInt), int_(v) {}                           // NOLINT(google-explicit-constructor)
+    Json(unsigned v) : kind_(Kind::kInt), int_(v) {}                      // NOLINT(google-explicit-constructor)
+    Json(long v) : kind_(Kind::kInt), int_(v) {}                          // NOLINT(google-explicit-constructor)
+    Json(long long v) : kind_(Kind::kInt), int_(v) {}                     // NOLINT(google-explicit-constructor)
+    Json(unsigned long v);                                                // NOLINT(google-explicit-constructor)
+    Json(unsigned long long v);                                           // NOLINT(google-explicit-constructor)
+    Json(double v) : kind_(Kind::kFloat), float_(v) {}                    // NOLINT(google-explicit-constructor)
     Json(std::string v) : kind_(Kind::kString), string_(std::move(v)) {}  // NOLINT(google-explicit-constructor)
     Json(std::string_view v) : kind_(Kind::kString), string_(v) {}        // NOLINT(google-explicit-constructor)
     Json(const char* v) : kind_(Kind::kString), string_(v) {}             // NOLINT(google-explicit-constructor)
@@ -66,11 +66,11 @@ public:
     const Json* find(std::string_view key) const;  // d.get(key): nullptr when absent
     Json* find(std::string_view key);
     bool contains(std::string_view key) const { return find(key) != nullptr; }
-    const Json& at(std::string_view key) const;      // d[key]: std::out_of_range (KeyError) when absent
-    Json& operator[](std::string_view key);          // d[key] = ...: a new key goes last, an old one keeps its place
+    const Json& at(std::string_view key) const;  // d[key]: std::out_of_range (KeyError) when absent
+    Json& operator[](std::string_view key);      // d[key] = ...: a new key goes last, an old one keeps its place
     void set(std::string_view key, Json value) { (*this)[key] = std::move(value); }
-    bool erase(std::string_view key);                // d.pop(key, None)
-    void update(const Json& other);                  // d.update(other)
+    bool erase(std::string_view key);  // d.pop(key, None)
+    void update(const Json& other);    // d.update(other)
     // list operations
     void push_back(Json value);
     std::size_t size() const;  // len() of a list, dict or string
@@ -88,10 +88,11 @@ private:
 
 // json.dumps(value, ensure_ascii=False, indent=1): what json.dump(..., indent=1) writes into a reflection file
 std::string JsonIndent1(const Json& value);
-// json.dumps(value): one line, ", " and ": " between things, everything but ASCII escaped
-std::string JsonLine(const Json& value);
+// json.dumps(value): one line, ", " and ": " between things, everything but ASCII escaped (unless ensure_ascii is
+// false)
+std::string JsonLine(const Json& value, bool ensure_ascii = true);
 // json.dumps(value, sort_keys=True, separators=(',', ':'))
-std::string JsonSortedCompact(const Json& value);
+std::string JsonSortedCompact(const Json& value, bool ensure_ascii = true);
 // json.loads; InvalidArgument for text that is not JSON
 absl::StatusOr<Json> JsonParse(std::string_view text);
 

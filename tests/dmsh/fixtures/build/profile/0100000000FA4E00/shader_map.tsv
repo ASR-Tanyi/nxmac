@@ -1,0 +1,14 @@
+# kind: evidence  a made-up game
+# column 5 records where each key first appears
+package	index	stage	dm_ctl_sha16	source
+vs_test.bin	0	vs	5511e7e36b75f95d	/Shader/basic.bnsh#0
+vs_test.bin	1	vs	d09f7dd8670b7e97	/Shader/fullscreen.bnsh#0
+vs_test.bin	2	vs	a219b8da7b32a52b	/Shader/skinned.bnsh#0
+ps_test.bin	0	ps	6f1645f3af320e26	/Shader/textured.bnsh#0
+ps_test.bin	1	ps	c6c05d03e0343cf4	/Shader/two_targets.bnsh#0
+ps_test.bin	2	ps	2971af7ec9134346	/Shader/integer.bnsh#0
+ps_test.bin	3	ps	822d44cf9246982d	/Shader/blend.bnsh#0
+cs_test.bin	0	cs	b262604f7619d820	/Shader/shared.bnsh#0
+cs_test.bin	1	cs	63d8a11c30e4c697	/Shader/big_shared.bnsh#0
+vs_test.bin	3	vs	544b00756f27ffde	/Shader/writer.bnsh#0
+cs_test.bin	2	cs	323e368a9a5d482d	/Shader/copy.bnsh#0

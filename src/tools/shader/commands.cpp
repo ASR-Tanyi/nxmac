@@ -1,8 +1,10 @@
 #include <algorithm>
 #include <thread>
 
+#include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
+#include "nxmac/dmsh/build.h"
 #include "nxmac/shader/profiles.h"
 #include "nxmac/shader/split.h"
 #include "shader/options.h"
@@ -61,6 +63,28 @@ int Split(const shader::ShaderProfiles& profiles, const Options& options, std::o
     return kOk;
 }
 
+int BuildLibrary(const Options& options, std::ostream& out, std::ostream& err) {
+    dmsh::BuildOptions build;
+    build.packages = options.romfs[0];
+    build.out = options.out;
+    const std::string nxnative = options.nxnative.empty() ? "" : options.nxnative + "/";
+    build.profile = !options.profile.empty() ? options.profile : nxnative + "dm/games/" + options.game;
+    build.xlate = !options.xlate.empty() ? options.xlate : nxnative + "dm/gfx/tools/dmsh_xlate_bin/dmsh_xlate";
+    build.tables = options.tables;
+    build.cache = options.cache;
+    build.min_macos = options.min_macos;
+    build.jobs = options.jobs;
+    build.print = [&out](const std::string& line) { out << line << "\n" << std::flush; };
+    absl::StatusOr<dmsh::BuildResult> result = dmsh::Build(build);
+    if (!result.ok()) {
+        const std::string_view m = result.status().message();
+        err << (absl::StartsWith(m, "[RED]") ? "" : "[RED] ") << m << "\n";
+        return kFailed;
+    }
+    out << result->image << ": " << result->ok << " of " << result->shaders << " shaders\n";
+    return kOk;
+}
+
 }  // namespace
 
 int RunShader(const std::vector<std::string>& args, std::ostream& out, std::ostream& err) {
@@ -73,6 +97,7 @@ int RunShader(const std::vector<std::string>& args, std::ostream& out, std::ostr
         out << Usage();
         return kOk;
     }
+    if (options->command == "build") return BuildLibrary(*options, out, err);
     const shader::ShaderProfiles* profiles = &shader::ShaderProfiles::BuiltIn();
     absl::StatusOr<shader::ShaderProfiles> from_file;
     if (!options->profiles.empty()) {
