@@ -72,3 +72,9 @@ nxmac_add_test(dmsh_test
   LIBS nxmac::dmsh nxmac::fs ZLIB::ZLIB absl::strings)
 target_include_directories(dmsh_test PRIVATE "${PROJECT_SOURCE_DIR}/src/dmsh")   # its internals
 target_compile_definitions(dmsh_test PRIVATE "NXMAC_DMSH_FIXTURES=\"${CMAKE_CURRENT_SOURCE_DIR}/dmsh/fixtures\"")
+
+# nxmac::loader, and that it reads the tables the rewriter writes (the rewriter's fixtures)
+nxmac_add_test(loader_test
+  SOURCES loader/layout_test.cpp
+  LIBS nxmac::loader nxmac::rewriter absl::strings)
+target_compile_definitions(loader_test PRIVATE "NXMAC_REWRITER_FIXTURES=\"${CMAKE_CURRENT_SOURCE_DIR}/rewriter/fixtures\"")

@@ -55,6 +55,7 @@ src/rewriter/     nxmac::rewriter: the NSO rewriter (nxnative's patch_nso.py), i
 src/shader/       nxmac::shader: the shader split (nxnative's shader_split.py) and its profile table (profiles.tsv); portable
 src/dmsh/         nxmac::dmsh: the shader build (nxnative's dmsh_build.py and its modules), on PCRE2 and SPIRV-Cross; portable
                   but for the Metal compile, which runs Xcode's tools
+src/loader/       nxmac::loader: nxhost's module loader (nxnative's dm/host/loader.c): so far the rewritten modules' layout tables; portable
 src/gfx/          nxmac::gfx: NVN / Vulkan / GL on Metal; Objective-C++ (.mm) inside, plain C++ headers outside
 src/host/         nxhost (nxnative's dmhost): loader, SVC gate (.S), services; built for NXMAC_GAME
 src/tools/        native replacements for nxnative's tools: nxmac_add_tool(<name> SOURCES ...); nsp/, nso/ and shader/

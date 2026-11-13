@@ -11,8 +11,10 @@ nxhost (`src/host` + `src/gfx`) is the C++ rewrite of nxnative's Mac host, `dm/h
 ## Decisions
 
 - **Scope: BotW first, then everything.** Items 1–11 make Breath of the Wild (`01007EF00011E000`) run end to end on the Mac. Items 12–13 come after. Until they do, the parts they cover report "not ported yet".
-- **Approach: swap one group at a time.** Item 1 makes nxmac's CMake build nxnative's own C/ObjC (from `NXNATIVE_DIR` at the pinned commit) into nxhost, so nxhost behaves exactly like dmhost and BotW runs from the start. Each later item replaces one group with its C++ port, keeping `extern "C"` wherever C and C++ still meet. BotW must still run after every swap.
-- **Mac checks.** Each item is built on the Mac, then its tests are run, then a BotW smoke run (the profile's `smoke.tsv`). Off the Mac, only the parts without Apple APIs can be compile-checked (`python -m ziglang c++ -target aarch64-macos`). Nothing of the host runs on Linux.
+- **Approach: nxmac's own code.** nxhost is written in nxmac; nxnative's `dm/host` and `dm/gfx` are the reference that is read, and none of nxnative's own code (its sources, tools or shaders) is compiled into nxhost. What does come from nxnative is what nxmac only refers to: the game profiles (`dm/games`) and the third-party code nxnative vendors (libvpx, dav1d, and later stb_vorbis, Vulkan-Headers, `nvn.h`).
+- **Small steps.** Every change is small and checked before the next one: unit tests (in the cloud where the code has no Apple APIs), then a build on the Mac, and a check on BotW's real files where the step can have one (the loader on BotW's rewritten modules, for instance). BotW itself can only start once items 2–11 are in place; then the BotW smoke run (the profile's `smoke.tsv`) joins the checks. Off the Mac, code with Apple APIs can only be compile-checked (`python -m ziglang c++ -target aarch64-macos`, without the SDK's frameworks).
+- **Minimum macOS: 15, nxhost included** (as the rest of nxmac). nxnative's graphics code uses Metal 4 (macOS 26) throughout, so its port is guarded for availability, and nxhost runs only on macOS 26 until the graphics code has a path without Metal 4. That path is not one of the items below yet.
+- **Xcode 26:** nxmac builds with Xcode 26's SDK. What nxnative takes from Xcode 27's SDK (MetalFX's content offsets in `nvn_mtl.m`, for one) goes behind `#if defined(__MAC_27_0)` as well as `@available` in the port.
 - **Port style (as nso and the shader build):** a faithful port file by file, keeping names, behaviour, log lines and environment switches. Inside, it uses C++ idioms (RAII, std, Abseil), with Objective-C++ only where Apple APIs are touched. Each item's tests move to GoogleTest with it.
 
 ## Items
@@ -21,7 +23,7 @@ Sizes are of nxnative's source.
 
 | # | Item | nxnative files | Size | BotW |
 |---|---|---|---|---|
-| 1 | Build plumbing: ASM, Objective-C++, frameworks. libvpx 1.17.0 (VP9 decoder), dav1d 1.5.4 (+ NEON assembly), stb_vorbis 1.22, Vulkan-Headers 1.4.363 (item 13 only). Generators: `gen_protos.py`, `host_msl.py` (13 host `.metal` files), `dmsh_chain.h`. The C build of nxnative's sources | Makefile, tools | small | yes |
+| 1 | Build plumbing: libvpx 1.17.0 (VP8 / VP9 decoders) and dav1d 1.5.4 (+ NEON assembly) from nxnative's vendored copies. The rest comes with the item that needs it: stb_vorbis 1.22 (9), `nvn.h` and nxmac's own generator of the NVN prototypes and thunks (10), the host's Metal shaders compiled by nxmac::gfx (11d), Vulkan-Headers 1.4.363 (13) | Makefile | small | yes |
 | 2 | Core runtime: `main.c`, `loader.c`, `entry.S`, `hle.c`, `hle_table.c`, `hle_bigstack.c`, `crash.c`, `probe.c`, `thread.c`, `hle_thread.c`, `hle_svc.c`, `hle_os.c`, `hle_sdkinit.c`, `hle_ro.c`, `hle_jit.c`, `hle_guestthread.c`, `hle_count.c`, `hle_fdstat.c`, `memstat.m`, `dm.h`, `hle.h` | 21 | 454 KB | yes |
 | 3 | File system and saves: `hle_fs.c`, `save_sync.c/.h`, `romfs_image.h` (on nxmac::fs's DMROMFS1), `romfs_identity.h` | 5 | 146 KB | yes |
 | 4 | System services: `hle_oe`, `lifecycle`, `time`, `account`, `friends`, `mii`, `offline`, `misc`, `net`, `web` + `web_apple.m`, `sf`, `sdk16`, `swkbd`, `nvdrv`, `glslc` | 16 | 324 KB | yes |
@@ -50,11 +52,12 @@ Sizes are of nxnative's source.
 
 - ABI: Apple's AAPCS64 and the Switch's differ. Arguments narrower than 32 bits are received as `int` / `unsigned` and truncated by the host, and variadics are never C's `...`. No C++ exception may cross a guest frame.
 - Registration: the `HLE` / `HLE_FORCE` tables live in the Mach-O sections `__DATA,swhle` / `__DATA,swforce`. If no module references an entry, loading fails, on purpose.
-- A piece is done when it builds on the Mac, its tests pass there (as GoogleTest), and the BotW smoke run behaves as dmhost's.
+- A piece is done when it builds on the Mac, its tests pass there (as GoogleTest), its check on BotW's files (if it has one) passes, and, once BotW can start, the BotW smoke run behaves as dmhost's.
 
 ## Status
 
 | # | State |
 |---|---|
-| 1 | in progress. Done: libvpx as `nxmac::vpx`, dav1d as `nxmac::dav1d` (`src/host/third_party`, from nxnative's copies). Next: the host MSL header, nxnative's sources into nxhost |
-| 2–13 | not started: nxhost is still the stub `src/host/main.cpp`, `src/gfx` has only `metal_device.mm` |
+| 1 | done: libvpx as `nxmac::vpx`, dav1d as `nxmac::dav1d` (`src/host/third_party`); the rest comes with items 9–13 |
+| 2 | in progress. Done: 2a, the layout tables (`<module>.fixups.tsv`) read by `nxmac::loader` (`src/loader`, portable, `loader_test`). Next: nxhost reads BotW's tables from nso's output |
+| 3–13 | not started: nxhost is still the stub `src/host/main.cpp`, `src/gfx` has only `metal_device.mm` |
