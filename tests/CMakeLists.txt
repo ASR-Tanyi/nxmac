@@ -82,7 +82,7 @@ target_compile_definitions(loader_test PRIVATE "NXMAC_REWRITER_FIXTURES=\"${CMAK
 
 # nxmac::horizon, on a clock the tests set and address spaces they reserve
 nxmac_add_test(horizon_test
-  SOURCES horizon/address_space_test.cpp horizon/clock_test.cpp horizon/entropy_test.cpp
+  SOURCES horizon/address_space_test.cpp horizon/clock_test.cpp horizon/entropy_test.cpp horizon/handles_test.cpp
   LIBS nxmac::horizon absl::strings)
 
 # The host gate end to end (gate.S), which runs rewritten code natively: Apple's arm64 alone, where the host is built

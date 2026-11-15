@@ -59,7 +59,7 @@ src/loader/       nxmac::loader: nxhost's module loader (nxnative's dm/host/load
                   which modules a profile loads, their images mapped, their symbols, their relocation
                   and their host gates; portable (POSIX)
 src/horizon/      nxmac::horizon: nxhost's stand-ins for Horizon's kernel that need no Apple API (so far the guest clock,
-                  entropy and address space); portable
+                  entropy, address space and handles); portable
 src/gfx/          nxmac::gfx: NVN / Vulkan / GL on Metal; Objective-C++ (.mm) inside, plain C++ headers outside
 src/host/         nxhost (nxnative's dmhost): its runtime (nxmac::host_runtime: log, thread keys, the SVC gate, gate.S), its
                   takeovers (hle_*.cpp) and main; built for NXMAC_GAME

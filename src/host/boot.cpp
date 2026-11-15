@@ -1,7 +1,5 @@
 #include "boot.h"
 
-#include <pthread.h>
-
 #include <array>
 #include <cstdint>
 #include <string_view>
@@ -9,6 +7,7 @@
 #include "gate.h"
 #include "log.h"
 #include "modules.h"
+#include "svc_thread.h"
 #include "thread.h"
 
 namespace nxmac::host {
@@ -35,21 +34,6 @@ void RunModuleInits() {
         Log("%s: DT_INIT +%#x (init_array %u entries)", m.name, m.symbols.init(), m.symbols.init_arraysz() / 8);
         reinterpret_cast<Fn0>(m.image.base() + m.symbols.init())();
     }
-}
-
-// svc_thread_main_init, until the thread table comes over: the handle and ID nxnative's gives the main thread (the
-// first handle, the first ID)
-constexpr std::uint32_t kMainThreadHandle = 0x1001;
-constexpr std::uint64_t kMainThreadId = 0x51;
-
-std::uint32_t MainThreadInit() {
-    GuestThreadSetId(kMainThreadId);
-#if defined(__APPLE__)
-    pthread_setname_np("0x1001 main thread");
-#endif
-    Log("[RED] main guest thread: handle %#x, ID %#x, without the thread table yet (hle_thread.c)", kMainThreadHandle,
-        kMainThreadId);
-    return kMainThreadHandle;
 }
 
 }  // namespace

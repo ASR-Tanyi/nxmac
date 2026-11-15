@@ -15,6 +15,7 @@
 #include "modules.h"
 #include "nxmac/horizon/address_space.h"
 #include "nxmac/horizon/entropy.h"
+#include "svc_thread.h"
 
 namespace nxmac::host {
 namespace {
@@ -376,6 +377,7 @@ std::string_view SvcName(int num) {
 
 std::uint64_t SvcDispatch(int num, std::uint64_t* regs, std::uint64_t orig) {
     GuestMemory();  // reserved before the first svc's work, as hle_svc.c svc_dispatch's mem_init
+    if (SvcThread(num, regs)) return regs[0];
     switch (num) {
         case 0x06:
             return QueryMemory(regs);
