@@ -31,6 +31,9 @@ struct Seen {
 };
 std::vector<Seen> g_seen;  // what the handler was called with, in order (one test thread at a time)
 
+std::uint64_t g_ticks = 0;  // the counter reads so far; each one reads the next value
+std::uint64_t TestTicks() { return 0x1000 + ++g_ticks; }
+
 std::uint64_t TestSvc(int num, std::uint64_t* regs, std::uint64_t orig) {
     g_seen.push_back({num, regs[0], regs[8], orig});
     if (num == 0x1f) regs[0] += 1;
@@ -77,12 +80,14 @@ protected:
         ASSERT_GE(*n, 3);  // svc #0x1f, svc #0x7, svc #0x7f, and the counter reads
         GateHandlers handlers;
         handlers.svc = &TestSvc;
+        handlers.ticks = &TestTicks;
         SetGates(&module_->gates, handlers);
     }
 
     void SetUp() override {
         ASSERT_NE(module_, nullptr);
         g_seen.clear();
+        g_ticks = 0;
     }
 
     template <typename Fn>
@@ -130,6 +135,16 @@ TEST_F(GateTest, EachThreadHasItsOwnGateStack) {
     t.join();
     EXPECT_EQ(other, 1001u);
     EXPECT_EQ(sys_svc(7), 8u);  // this thread's gate still works after the other's
+}
+
+// sys_timers: mrs x9, cntpct; mrs x18, cntpct; mrs x1, cntvct; mrs x2, ctr; mrs x18, ctr; mrs x30, cntpct; ret. Four
+// counter reads through the gate; the one into x30 cannot reach the guest and must not take the gate's return with it
+TEST_F(GateTest, CounterReadsGoThroughTheGate) {
+    GuestGateStack(false);
+    const auto sys_timers = Function<void (*)()>("sys_timers");
+    sys_timers();
+    EXPECT_EQ(g_ticks, 4u);
+    EXPECT_TRUE(g_seen.empty());  // no svc among them
 }
 
 }  // namespace

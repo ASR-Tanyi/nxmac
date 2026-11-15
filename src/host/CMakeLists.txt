@@ -20,6 +20,6 @@ add_executable(nxhost
   hle_nvdrv.cpp
   hle_tables.cpp
   main.cpp)
-target_link_libraries(nxhost PRIVATE nxmac::host_runtime nxmac::core nxmac::gfx nxmac::loader nxmac::game_profile
-  absl::str_format absl::strings)
+target_link_libraries(nxhost PRIVATE nxmac::host_runtime nxmac::core nxmac::gfx nxmac::horizon nxmac::loader
+  nxmac::game_profile absl::str_format absl::strings)
 nxmac_target_defaults(nxhost)

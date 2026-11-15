@@ -25,6 +25,7 @@
 #include "log.h"
 #include "nxmac/core/version.h"
 #include "nxmac/gfx/metal_device.h"
+#include "nxmac/horizon/clock.h"
 #include "nxmac/loader/gates.h"
 #include "nxmac/loader/hle.h"
 #include "nxmac/loader/image.h"
@@ -82,6 +83,17 @@ std::string Where(const void* p) {
     if (m == nullptr) return absl::StrFormat("%p", p);
     const std::int64_t off = static_cast<const std::uint8_t*>(p) - m->image.base();
     return absl::StrCat(m->name, off < 0 ? "-" : "+", SignedHex(off < 0 ? -off : off));
+}
+
+// The guest clock, and the system counter's rate: the SDK's (19.2 MHz, or 31.25 MHz for the Switch 2's)
+std::unique_ptr<horizon::GuestClock> g_clock;
+bool g_ounce = false;
+
+// What the cntpct / cntvct gates read (hle_os.c guest_clock_read_wait, then guest_ticks). Not ported yet: dm_host_work,
+// with which the graphics layer's own reads see the frozen clock instead of waiting
+std::uint64_t GuestTicks() {
+    g_clock->ReadWait(/*host_work=*/false);
+    return g_clock->Ticks(g_ounce);
 }
 
 // What the boot calls by name, in its order (main.c guest_main: the steps of nn::init::Start, then nnMain)
@@ -216,8 +228,14 @@ int Main(int argc, char** argv) {
     }
     if (ounce) Log("sdk: built for the Switch 2 (spec: Ounce)");
 
-    // The gates, with nothing behind them yet: a gate the guest reaches stops with a [RED] line for its kind
-    SetGates(g_gates.get(), {});
+    // The guest clock (DM_DETCLOCK: nanoseconds a present, for replays), behind the counter reads' gates. The SVCs and
+    // spin waits have nothing behind them yet: a gate of theirs the guest reaches stops with a [RED] line
+    horizon::GuestClock::Options clock;
+    if (const char* e = std::getenv("DM_DETCLOCK")) clock.detclock_step = std::strtoull(e, nullptr, 0);
+    clock.log = [](std::string_view line) { Log("%s", line); };
+    g_clock = std::make_unique<horizon::GuestClock>(std::move(clock));
+    g_ounce = ounce;
+    SetGates(g_gates.get(), {.ticks = &GuestTicks});
 
     // main.c req: what the boot calls must be there
     std::string boot;
@@ -227,8 +245,7 @@ int Main(int argc, char** argv) {
         absl::StrAppend(&boot, boot.empty() ? "" : ", ", name, " ", Where(p));
     }
     Log("boot symbols: %s", boot);
-    Log("[RED] nxhost stops here: the SVCs, the guest clock, most takeovers and the named stubs' code are not ported "
-        "yet "
+    Log("[RED] nxhost stops here: the SVCs, the threads, most takeovers and the named stubs' code are not ported yet "
         "(%d gates, %u stubs)",
         g_gates->count(), hle->stubs());
     return 1;

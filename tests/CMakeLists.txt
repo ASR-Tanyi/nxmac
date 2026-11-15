@@ -80,6 +80,11 @@ nxmac_add_test(loader_test
   LIBS nxmac::loader nxmac::rewriter absl::strings)
 target_compile_definitions(loader_test PRIVATE "NXMAC_REWRITER_FIXTURES=\"${CMAKE_CURRENT_SOURCE_DIR}/rewriter/fixtures\"")
 
+# nxmac::horizon, on a clock the tests set
+nxmac_add_test(horizon_test
+  SOURCES horizon/clock_test.cpp
+  LIBS nxmac::horizon)
+
 # The host gate end to end (gate.S), which runs rewritten code natively: Apple's arm64 alone, where the host is built
 if(TARGET nxmac_host_runtime)
   nxmac_add_test(gate_test

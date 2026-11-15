@@ -4,6 +4,7 @@
 #include <sys/mman.h>
 
 #include <array>
+#include <atomic>
 #include <cerrno>
 #include <mutex>
 
@@ -117,6 +118,16 @@ extern "C" std::uint64_t nxhost_gate_dispatch(std::uint64_t ret, std::uint64_t* 
                 // The slot holds the guest's x18 itself, here the counter's value
                 pthread_setspecific(nxmac::host::Keys()[nxmac::loader::kKeyK18],
                                     reinterpret_cast<void*>(t));  // NOLINT(performance-no-int-to-ptr)
+            } else if (g->arg == 29 || g->arg == 30) {
+                // The gate block reloads x29 / x30 from its own stack after the gate, and the gate returns through x30:
+                // a read into either cannot reach the guest (nxnative's gate wrote x30 and jumped to the counter)
+                static std::atomic<bool> told{false};
+                if (!told.exchange(true)) {
+                    nxmac::host::Log(
+                        "[RED] gate: a counter read into x%d (at %#x) cannot reach the guest: the gate block "
+                        "restores x29 / x30",
+                        g->arg, g->orig);
+                }
             } else {
                 regs[g->arg] = t;
             }
