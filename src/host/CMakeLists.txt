@@ -3,13 +3,15 @@
 # dm/host/entry.S) is assembly, gate.S; ASM is enabled for it.
 add_subdirectory(third_party)   # libvpx and dav1d, from nxnative's copies (third-party code it vendors)
 
-# The host's runtime, which the Mac-only tests run too: its log, its thread keys, and the host gate (gate.S: the SVC
-# gate's assembly, nxnative's entry.S)
+# The host's runtime, which the Mac-only tests run too: its log, its thread keys, the host gate (gate.S: the SVC gate's
+# assembly, nxnative's entry.S), the loaded modules and the guest threads' environment
 add_library(nxmac_host_runtime STATIC
   gate.S
   gate.cpp
   keys.cpp
-  log.cpp)
+  log.cpp
+  modules.cpp
+  thread.cpp)
 add_library(nxmac::host_runtime ALIAS nxmac_host_runtime)
 target_include_directories(nxmac_host_runtime PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(nxmac_host_runtime PUBLIC nxmac::loader absl::str_format PRIVATE absl::strings)
@@ -17,9 +19,11 @@ nxmac_target_defaults(nxmac_host_runtime)
 
 # The takeover files (hle_*.cpp) are listed here: each one's entries reach the tables by being linked into nxhost
 add_executable(nxhost
+  boot.cpp
   hle_nvdrv.cpp
   hle_tables.cpp
-  main.cpp)
+  main.cpp
+  svc.cpp)
 target_link_libraries(nxhost PRIVATE nxmac::host_runtime nxmac::core nxmac::gfx nxmac::horizon nxmac::loader
   nxmac::game_profile absl::str_format absl::strings)
 nxmac_target_defaults(nxhost)

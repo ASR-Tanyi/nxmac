@@ -1,6 +1,6 @@
-// nxhost's entry point, as nxnative's dm/host/main.c: nxhost <module dir> [module...] [-- game arguments...]. So far it
-// reads the modules' layout tables, maps their images, reads their symbols, registers their host gates, relocates
-// them and finds the boot's symbols, then stops there: the gate's dispatch and the host's implementations come next.
+// nxhost's entry point, as nxnative's dm/host/main.c: nxhost <module dir> [module...] [-- game arguments...]. It reads
+// the modules' layout tables, maps their images, reads their symbols, registers their host gates and relocates them,
+// then runs the game's boot on this thread until the first SVC that is not ported yet stops it.
 #include <dlfcn.h>
 #include <pthread.h>
 
@@ -18,11 +18,13 @@
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_split.h"
+#include "boot.h"
 #include "game_profile.h"
 #include "gate.h"
 #include "hle.h"
 #include "keys.h"
 #include "log.h"
+#include "modules.h"
 #include "nxmac/core/version.h"
 #include "nxmac/gfx/metal_device.h"
 #include "nxmac/horizon/clock.h"
@@ -34,56 +36,14 @@
 #include "nxmac/loader/relocate.h"
 #include "nxmac/loader/sdk.h"
 #include "nxmac/loader/symbols.h"
+#include "svc.h"
 
 namespace nxmac::host {
 namespace {
 
 constexpr std::size_t kMaxGameArgs = 63;  // as main.c's g_argv
 
-// A signed offset in hex: -0x2000000 for a patch area before the base
-std::string SignedHex(std::int64_t v) {
-    return absl::StrFormat("%s%#x", v < 0 ? "-" : "",
-                           v < 0 ? 0 - static_cast<std::uint64_t>(v) : static_cast<std::uint64_t>(v));
-}
-
-// One loaded module (dm.h module_t): its table, its image, its symbols
-struct Module {
-    std::string name;
-    loader::ModuleLayout layout;
-    loader::ModuleImage image;
-    loader::ModuleSymbols symbols;
-};
-std::vector<Module> g_modules;               // in load order; filled once, before any guest code runs
 std::unique_ptr<loader::GateTable> g_gates;  // every module's host gates, by return point (hle.c g_gate)
-
-// The first module, in load order, that defines `name` (loader.c guest_sym / loaded_sym); null when none does
-std::uint8_t* GuestSym(std::string_view name) {
-    for (const Module& m : g_modules) {
-        if (std::uint8_t* const p = m.symbols.Find(name)) return p;
-    }
-    return nullptr;
-}
-
-// The module `p` is in, a far module's front patch area included (loader.c module_of); null when it is in none
-const Module* ModuleOf(const void* p) {
-    const auto* const a = static_cast<const std::uint8_t*>(p);
-    for (const Module& m : g_modules) {
-        const std::uint8_t* const b = m.image.base();
-        if (a >= b && a < b + m.image.size()) return &m;
-        if (m.layout.patch_off < 0 && a >= b + m.layout.patch_off && a < b + m.layout.patch_off + m.image.patch_len()) {
-            return &m;
-        }
-    }
-    return nullptr;
-}
-
-// "main+0x12afc" for an address in a module
-std::string Where(const void* p) {
-    const Module* const m = ModuleOf(p);
-    if (m == nullptr) return absl::StrFormat("%p", p);
-    const std::int64_t off = static_cast<const std::uint8_t*>(p) - m->image.base();
-    return absl::StrCat(m->name, off < 0 ? "-" : "+", SignedHex(off < 0 ? -off : off));
-}
 
 // The guest clock, and the system counter's rate: the SDK's (19.2 MHz, or 31.25 MHz for the Switch 2's)
 std::unique_ptr<horizon::GuestClock> g_clock;
@@ -156,6 +116,7 @@ int Main(int argc, char** argv) {
     }
     // load_modules: every module's layout first, then the host keys, then each image mapped (its code sealed on return)
     // and its dynamic section read
+    std::vector<Module>& g_modules = Modules();
     g_modules.reserve(names.size());
     for (const std::string& name : names) {
         absl::StatusOr<loader::ModuleLayout> m = loader::ReadLayout(dir, name);
@@ -228,14 +189,14 @@ int Main(int argc, char** argv) {
     }
     if (ounce) Log("sdk: built for the Switch 2 (spec: Ounce)");
 
-    // The guest clock (DM_DETCLOCK: nanoseconds a present, for replays), behind the counter reads' gates. The SVCs and
-    // spin waits have nothing behind them yet: a gate of theirs the guest reaches stops with a [RED] line
+    // The guest clock (DM_DETCLOCK: nanoseconds a present, for replays) behind the counter reads' gates, the SVCs
+    // behind theirs (each stops with a [RED] line until it is ported). Spin waits have nothing behind them yet.
     horizon::GuestClock::Options clock;
     if (const char* e = std::getenv("DM_DETCLOCK")) clock.detclock_step = std::strtoull(e, nullptr, 0);
     clock.log = [](std::string_view line) { Log("%s", line); };
     g_clock = std::make_unique<horizon::GuestClock>(std::move(clock));
     g_ounce = ounce;
-    SetGates(g_gates.get(), {.ticks = &GuestTicks});
+    SetGates(g_gates.get(), {.svc = &SvcDispatch, .ticks = &GuestTicks});
 
     // main.c req: what the boot calls must be there
     std::string boot;
@@ -245,10 +206,8 @@ int Main(int argc, char** argv) {
         absl::StrAppend(&boot, boot.empty() ? "" : ", ", name, " ", Where(p));
     }
     Log("boot symbols: %s", boot);
-    Log("[RED] nxhost stops here: the SVCs, the threads, most takeovers and the named stubs' code are not ported yet "
-        "(%d gates, %u stubs)",
-        g_gates->count(), hle->stubs());
-    return 1;
+    GuestMain(game_args);
+    return 0;
 }
 
 }  // namespace
