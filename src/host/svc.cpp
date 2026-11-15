@@ -1,11 +1,13 @@
 #include "svc.h"
 
+#include <pthread.h>
 #include <unistd.h>
 
 #include <array>
 #include <atomic>
 #include <cstdint>
 #include <cstdlib>
+#include <cstring>
 #include <utility>
 
 #include "game_profile.h"
@@ -194,6 +196,11 @@ const horizon::GuestAddressSpace& GuestMemory() {
 
 std::uint64_t Address(const void* p) { return reinterpret_cast<std::uintptr_t>(p); }
 
+// The host pointer a guest address is (the guest runs in the host's address space)
+void* HostPtr(std::uint64_t a) {
+    return reinterpret_cast<void*>(static_cast<std::uintptr_t>(a));  // NOLINT(performance-no-int-to-ptr)
+}
+
 // The program ID GetInfo answers: the profile's program_id, or DM_PROGRAM_ID (hex)
 std::uint64_t ProgramId() {
     static const std::uint64_t id = [] {
@@ -306,6 +313,61 @@ std::uint64_t GetInfo(std::uint64_t* regs) {
     return 0;
 }
 
+// Horizon's memory states and the MemoryInfo that QueryMemory writes (hle_svc.c case 0x06)
+enum MemoryState : std::uint32_t {
+    kStateFree = 0,
+    kStateCode = 3,
+    kStateCodeData = 4,
+    kStateHeap = 5,
+    kStateStack = 0xB,
+};
+
+struct MemoryInfo {
+    std::uint64_t base;
+    std::uint64_t size;
+    std::uint32_t state;
+    std::uint32_t attr;
+    std::uint32_t perm;
+    std::uint32_t ipc;
+    std::uint32_t device;
+    std::uint32_t reserved;
+};
+static_assert(sizeof(MemoryInfo) == 40, "MemoryInfo ABI size");
+
+// svc 0x06 QueryMemory(MemoryInfo* out, PageInfo* page_out, x2 address): x1 = the page info, 0 (hle_svc.c case 0x06).
+// So far the host's memory around the guest: the current thread's stack, whole (state Stack: when the SDK records the
+// main thread it queries its sp and takes the range as the thread's stack, which nn::os::GetCurrentStackInfo later
+// checks the sp against), and any other host address as its 4 KB page, free with no permissions, as Horizon reports
+// what is not mapped. The guest's address space (the heap, the mappings, the alias region) and the modules' regions
+// are not ported yet.
+std::uint64_t QueryMemory(std::uint64_t* regs) {
+    const std::uint64_t addr = regs[2];
+    if (GuestMemory().Contains(addr)) {
+        Die("[RED] svc QueryMemory %#x: in the guest's address space, which needs the heap and the mappings, not "
+            "ported yet",
+            addr);
+    }
+    if (ModuleOf(addr) != nullptr) Die("[RED] svc QueryMemory %s: a module's regions, not ported yet", Where(addr));
+    MemoryInfo out{};
+    pthread_t const self = pthread_self();
+    const std::uint64_t top = Address(pthread_get_stackaddr_np(self));
+    const std::uint64_t stack_size = pthread_get_stacksize_np(self);
+    if (addr < top && addr >= top - stack_size) {
+        out.base = top - stack_size;
+        out.size = stack_size;
+        out.state = kStateStack;
+        out.perm = 3;
+    } else {
+        out.base = addr & ~std::uint64_t{0xfff};
+        out.size = 0x1000;
+        out.state = kStateFree;
+    }
+    if (regs[0] != 0) std::memcpy(HostPtr(regs[0]), &out, sizeof out);
+    regs[0] = 0;
+    regs[1] = 0;
+    return 0;
+}
+
 }  // namespace
 
 std::string_view SvcName(int num) {
@@ -315,6 +377,8 @@ std::string_view SvcName(int num) {
 std::uint64_t SvcDispatch(int num, std::uint64_t* regs, std::uint64_t orig) {
     GuestMemory();  // reserved before the first svc's work, as hle_svc.c svc_dispatch's mem_init
     switch (num) {
+        case 0x06:
+            return QueryMemory(regs);
         case 0x29:
             return GetInfo(regs);
         default:
