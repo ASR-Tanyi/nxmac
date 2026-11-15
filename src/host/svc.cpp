@@ -1,12 +1,17 @@
 #include "svc.h"
 
+#include <unistd.h>
+
 #include <array>
 #include <atomic>
+#include <cstdint>
 #include <cstdlib>
+#include <utility>
 
 #include "game_profile.h"
 #include "log.h"
 #include "modules.h"
+#include "nxmac/horizon/address_space.h"
 #include "nxmac/horizon/entropy.h"
 
 namespace nxmac::host {
@@ -166,6 +171,29 @@ horizon::Entropy& GuestEntropy() {
     return e;
 }
 
+// The guest's address space, reserved at the first svc (hle_svc.c mem_init), as the profile and DM_ALIAS_SIZE say.
+// Never released: the guest's threads use it until the process ends.
+const horizon::GuestAddressSpace& GuestMemory() {
+    static const horizon::GuestAddressSpace* const as = [] {
+        const absl::StatusOr<horizon::AddressSpaceLayout> plan = horizon::PlanAddressSpace(
+            {.reserve = DM_GAME_MEM_RESERVE, .alias = DM_GAME_MEM_ALIAS, .stack = DM_GAME_MEM_STACK},
+            static_cast<std::uint64_t>(getpagesize()), std::getenv("DM_ALIAS_SIZE"));
+        if (!plan.ok()) Die("%s", plan.status().message());
+        absl::StatusOr<horizon::GuestAddressSpace> reserved = horizon::GuestAddressSpace::Reserve(*plan);
+        if (!reserved.ok()) Die("%s", reserved.status().message());
+        const auto* const g = new horizon::GuestAddressSpace(std::move(*reserved));
+        Log("guest AS %p +%#x  heap %p alias %p stack %p", g->base(), g->size(), g->heap(), g->alias(), g->stack());
+        if (reinterpret_cast<std::uintptr_t>(g->alias()) > (std::uintptr_t{1} << 39)) {
+            Log("[mem] the heap and stacks reach past 2^39, which a Switch's addresses never do: a crash on a cut-off "
+                "pointer points here (DM_ALIAS_SIZE=<profile's mem_alias> keeps them lower)");
+        }
+        return g;
+    }();
+    return *as;
+}
+
+std::uint64_t Address(const void* p) { return reinterpret_cast<std::uintptr_t>(p); }
+
 // The program ID GetInfo answers: the profile's program_id, or DM_PROGRAM_ID (hex)
 std::uint64_t ProgramId() {
     static const std::uint64_t id = [] {
@@ -175,8 +203,8 @@ std::uint64_t ProgramId() {
     return id;
 }
 
-// svc 0x29 GetInfo(out, w1 type, w2 handle, x3 subtype): x1 = the value (hle_svc.c case 0x29). The memory layout's
-// types wait for the guest memory layout.
+// svc 0x29 GetInfo(out, w1 type, w2 handle, x3 subtype): x1 = the value (hle_svc.c case 0x29). The used memory waits
+// for the heap (SetHeapSize) and the modules' memory.
 std::uint64_t GetInfo(std::uint64_t* regs) {
     const std::uint64_t id = regs[1];
     std::uint64_t v = 0;
@@ -235,17 +263,35 @@ std::uint64_t GetInfo(std::uint64_t* regs) {
         case kRemoteUsage1:
             v = 0;
             break;
+        // The guest's address space: the whole block is the ASLR region
         case kAliasAddr:
+            v = Address(GuestMemory().alias());
+            break;
         case kAliasSize:
+            v = GuestMemory().layout().alias_size;
+            break;
         case kHeapAddr:
+            v = Address(GuestMemory().heap());
+            break;
         case kHeapSize:
+            v = GuestMemory().layout().heap_size;
+            break;
         case kAslrAddr:
+            v = Address(GuestMemory().base());
+            break;
         case kAslrSize:
+            v = GuestMemory().size();
+            break;
         case kStackAddr:
+            v = Address(GuestMemory().stack());
+            break;
         case kStackSize:
+            v = GuestMemory().layout().stack_size;
+            break;
         case kUsedMem:
         case kUsedNonSys:
-            Die("[RED] svc GetInfo %d %s: needs the guest memory layout, not ported yet", id, InfoName(id));
+            Die("[RED] svc GetInfo %d %s: needs the heap (SetHeapSize) and the modules' used memory, not ported yet",
+                id, InfoName(id));
         default: {
             static std::array<std::atomic<bool>, 64> seen{};
             if (id >= seen.size() || !seen[id].exchange(true)) {
@@ -267,6 +313,7 @@ std::string_view SvcName(int num) {
 }
 
 std::uint64_t SvcDispatch(int num, std::uint64_t* regs, std::uint64_t orig) {
+    GuestMemory();  // reserved before the first svc's work, as hle_svc.c svc_dispatch's mem_init
     switch (num) {
         case 0x29:
             return GetInfo(regs);
